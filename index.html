@@ -753,6 +753,21 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <div class="fg" id="fc2g" style="display:none"><label>Categoria casa</label>
         <select id="fc2"><option>Aluguel / financiamento</option><option>Água</option><option>Luz</option><option>Internet</option><option>Alimentação</option><option>Farmácia</option><option>Escola / educação</option><option>Lazer</option><option>Serasa / dívida</option><option>Outro</option></select>
       </div>
+      <div class="r2">
+        <div class="fg"><label>Forma de pagamento</label>
+          <select id="fpgto">
+            <option value="">Não informado</option>
+            <option value="pix">Pix</option>
+            <option value="dinheiro">Dinheiro</option>
+            <option value="debito">Cartão de débito</option>
+            <option value="credito-vista">Cartão de crédito à vista</option>
+            <option value="credito-parcelado">Cartão de crédito parcelado</option>
+          </select>
+        </div>
+        <div class="fg" id="fparcg" style="display:none"><label>Nº de parcelas</label>
+          <input id="fparc" type="number" placeholder="ex: 3" min="2" max="48" inputmode="numeric">
+        </div>
+      </div>
       <button class="btn pri" onclick="addFin()">Salvar</button>
     </div>
     <div class="sl">Lançamentos</div>
@@ -882,9 +897,46 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 
 </main>
 
+<!-- MODAL EDITAR DÍVIDA -->
+<div id="div-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(5,11,24,.88);backdrop-filter:blur(12px);align-items:flex-end;justify-content:center;padding:0">
+  <div style="background:var(--s2);border:1px solid var(--line2);border-top-left-radius:20px;border-top-right-radius:20px;padding:22px 18px 36px;width:100%;max-width:480px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800">Editar dívida</div>
+      <button onclick="fecharEditDiv()" style="background:var(--s3);border:1px solid var(--line2);border-radius:50%;width:30px;height:30px;color:var(--t2);font-size:16px;cursor:pointer;font-family:Inter;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+    <input type="hidden" id="ediv-id">
+    <div class="r2">
+      <div class="fg"><label>Nome da dívida</label><input id="ediv-nome" placeholder="ex: Cartão Nubank"></div>
+      <div class="fg"><label>Categoria</label>
+        <select id="ediv-cat">
+          <option value="empresa">Empresa</option>
+          <option value="casa">Casa / pessoal</option>
+        </select>
+      </div>
+    </div>
+    <div class="r2">
+      <div class="fg"><label>Valor total (R$)</label><input id="ediv-total" type="number" placeholder="0,00" inputmode="decimal"></div>
+      <div class="fg"><label>Total já pago (R$)</label><input id="ediv-pago" type="number" placeholder="0,00" inputmode="decimal"></div>
+    </div>
+    <div class="fg"><label>Prioridade</label>
+      <select id="ediv-pri">
+        <option value="alta">Alta</option>
+        <option value="media">Média</option>
+        <option value="baixa">Baixa</option>
+      </select>
+    </div>
+    <div class="fg"><label>Observação</label>
+      <input id="ediv-obs" placeholder="ex: Cartão fatura fechada dia 10">
+    </div>
+    <button class="btn pri" onclick="salvarEditDiv()" style="margin-top:4px">Salvar alterações</button>
+    <div class="sp"></div>
+    <button class="btn ghost" onclick="fecharEditDiv()">Cancelar</button>
+  </div>
+</div>
+
 <!-- QUICK-ADD BAR -->
 <div class="qbar" id="qbar" style="display:none">
-  <input id="qa-txt" placeholder="Ex: Gasolina 250 ou Luz 180..." onkeydown="if(event.key==='Enter')qaAdd()">
+  <input id="qa-txt" placeholder="Ex: Gasolina 250 pix · Mercado 180 crédito · Roupa 300 parcelado 3x" onkeydown="if(event.key==='Enter')qaAdd()">
   <button class="qbar-btn" onclick="qaAdd()">+ Lançar</button>
 </div>
 
@@ -1140,13 +1192,25 @@ function sub(id,btn){
 /* ═══════ QUICK-ADD ═════════════════════════════ */
 function qaAdd(){
   const txt=$('qa-txt').value.trim();if(!txt)return;
-  const m=txt.match(/(\d[\d\.,]*)\s*$/);
+  // Detectar forma de pagamento no texto: "pix", "débito", "crédito", "dinheiro", "parcelado Nx"
+  let pgto='',parc=null;
+  const tl=txt.toLowerCase();
+  if(/parcelado?\s*(\d+)x?/i.test(tl)){const mx=tl.match(/parcelado?\s*(\d+)x?/i);parc=+mx[1];pgto='credito-parcelado';}
+  else if(tl.includes('crédito')||tl.includes('credito'))pgto='credito-vista';
+  else if(tl.includes('débito')||tl.includes('debito'))pgto='debito';
+  else if(tl.includes('pix'))pgto='pix';
+  else if(tl.includes('dinheiro'))pgto='dinheiro';
+  // Remover termos de pagamento do texto para extrair nome/valor
+  const limpo=txt.replace(/parcelado?\s*\d+x?/gi,'').replace(/crédito|credito|débito|debito|dinheiro|pix/gi,'').trim();
+  const m=limpo.match(/(\d[\d\.,]*)\s*$/);
   if(!m){toast('Informe um valor. Ex: Gasolina 250','err');return;}
   const v=parseFloat(m[1].replace(',','.'))||0;if(!v){toast('Valor inválido','err');return;}
-  const nome=txt.replace(/\d[\d\.,]*\s*$/,'').replace(/R?\$\s*/,'').trim()||'Gasto';
+  const nome=limpo.replace(/\d[\d\.,]*\s*$/,'').replace(/R?\$\s*/,'').trim()||'Gasto';
   const id=uid();
-  DB.fin[id]={id,tipo:classSecao(nome,'desp'),valor:v,desc:nome,data:today(),cat:inferCat(nome),rec:classRec(nome)};
-  save();$('qa-txt').value='';toast('✅ '+nome+' — '+fmt(v)+' lançado');render();
+  DB.fin[id]={id,tipo:classSecao(nome,'desp'),valor:v,desc:nome,data:today(),cat:inferCat(nome),rec:classRec(nome),pgto,parc};
+  save();$('qa-txt').value='';
+  const pgLabel={'pix':'Pix','dinheiro':'Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':`Crédito ${parc}x`};
+  toast('✅ '+nome+' — '+fmt(v)+(pgto?' · '+pgLabel[pgto]:''));render();
 }
 
 /* ═══════ SHOWS ═════════════════════════════════ */
@@ -1245,6 +1309,14 @@ function toggleFC(){
   if($('fcg'))$('fcg').style.display=t==='desp'?'flex':'none';
   if($('fc2g'))$('fc2g').style.display=t==='casa'?'flex':'none';
 }
+function toggleParcelas(){
+  const fp=$('fpgto')?.value;
+  const pg=$('fparcg');if(pg)pg.style.display=fp==='credito-parcelado'?'flex':'none';
+}
+// ligar o evento ao select de forma de pagamento
+document.addEventListener('DOMContentLoaded',()=>{
+  const sel=$('fpgto');if(sel)sel.addEventListener('change',toggleParcelas);
+});
 
 /* Classificação */
 const KFX=['aluguel','financiamento','internet','netflix','spotify','amazon','apple','deezer','distribui','escola','faculdade','condominio','condomínio','mensalidade','seguro','celular','telefone','água','agua','luz','energia','gás','gas','plano'];
@@ -1296,7 +1368,7 @@ function processarMsg(){
 }
 function confirmarMsg(){
   const itens=window._pend||[];
-  itens.forEach(it=>{const id=uid();DB.fin[id]={id,tipo:it.tipo,valor:it.valor,desc:it.nome,data:it.data,cat:it.cat,rec:it.rec};});
+  itens.forEach(it=>{const id=uid();DB.fin[id]={id,tipo:it.tipo,valor:it.valor,desc:it.nome,data:it.data,cat:it.cat,rec:it.rec,pgto:it.pgto||'',parc:it.parc||null};});
   const n=itens.length;window._pend=null;
   save();render();$('msg-prev').innerHTML='';$('msgtxt').value='';
   toast(`✅ ${n} débitos salvos!`);
@@ -1305,9 +1377,12 @@ function addFin(){
   const tipo=$('ftp').value,valor=+$('fv').value||0,desc=$('fdesc').value.trim();
   if(!desc||!valor){toast('Preencha descrição e valor','err');return;}
   const cat=tipo==='desp'?$('fc').value:tipo==='casa'?$('fc2').value:'';
+  const pgto=$('fpgto')?.value||'';
+  const parc=pgto==='credito-parcelado'?(+$('fparc')?.value||2):null;
   const id=uid();
-  DB.fin[id]={id,tipo,valor,desc,data:$('fdt').value||today(),cat,rec:classRec(desc)};
-  save();$('fdesc').value='';$('fv').value='';toast('✅ Lançamento salvo');render();
+  DB.fin[id]={id,tipo,valor,desc,data:$('fdt').value||today(),cat,rec:classRec(desc),pgto,parc};
+  save();$('fdesc').value='';$('fv').value='';if($('fpgto'))$('fpgto').value='';if($('fparc'))$('fparc').value='';
+  toast('✅ Lançamento salvo');render();
 }
 function delFin(id){if(!confirm('Remover?'))return;delete DB.fin[id];save();render();}
 function addDiv(){
@@ -1323,6 +1398,46 @@ function abaterDiv(id){
   save();toast('✅ Pagamento registrado');render();
 }
 function delDiv(id){if(!confirm('Remover?'))return;delete DB.div[id];save();render();}
+
+function abrirEditDiv(id){
+  const d=DB.div[id];if(!d)return;
+  $('ediv-id').value=id;
+  $('ediv-nome').value=d.nome||'';
+  $('ediv-cat').value=d.cat||'empresa';
+  $('ediv-total').value=d.total||0;
+  $('ediv-pago').value=d.pago||0;
+  $('ediv-pri').value=d.pri||'media';
+  $('ediv-obs').value=d.obs||'';
+  const modal=$('div-modal');
+  modal.style.display='flex';
+  // Fechar ao clicar fora
+  setTimeout(()=>modal.addEventListener('click',function handler(e){
+    if(e.target===modal){fecharEditDiv();modal.removeEventListener('click',handler);}
+  }),100);
+}
+
+function fecharEditDiv(){
+  $('div-modal').style.display='none';
+}
+
+function salvarEditDiv(){
+  const id=$('ediv-id').value;
+  if(!DB.div[id])return;
+  const nome=$('ediv-nome').value.trim();
+  const total=+$('ediv-total').value||0;
+  if(!nome||!total){toast('Nome e valor total são obrigatórios','err');return;}
+  const pago=Math.min(+$('ediv-pago').value||0,total);
+  DB.div[id]={
+    ...DB.div[id],
+    nome,
+    cat:$('ediv-cat').value,
+    total,
+    pago,
+    pri:$('ediv-pri').value,
+    obs:$('ediv-obs').value.trim()
+  };
+  save();fecharEditDiv();toast('✅ Dívida atualizada');render();
+}
 
 /* ═══════ EQUIPAMENTOS ══════════════════════════ */
 function addEquip(){
@@ -2028,14 +2143,24 @@ function rFin(){
   const e=$('lista-fin');if(!e)return;
   const s=arr(DB.fin).sort((a,b)=>b.data.localeCompare(a.data));
   const rec=s.filter(f=>f.tipo==='rec'),fix=s.filter(f=>f.tipo!=='rec'&&f.rec==='fixo'),vri=s.filter(f=>f.tipo!=='rec'&&f.rec!=='fixo');
-  const row=f=>`<div class="item ${f.tipo==='rec'?'ig':f.rec==='fixo'?'ir':'ia'}">
+  const pgLabel={'pix':'Pix','dinheiro':'💵 Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':'Crédito parcelado'};
+  const pgColor={'pix':'var(--teal)','dinheiro':'var(--teal)','debito':'var(--sky)','credito-vista':'var(--vio2)','credito-parcelado':'var(--vio2)'};
+  const row=f=>{
+    const pgto=f.pgto&&f.pgto!==''?f.pgto:null;
+    const pgtoLabel=pgto?(pgLabel[pgto]+(f.parc&&pgto==='credito-parcelado'?' '+f.parc+'x':'')):'';
+    const pgtoColor=pgto?pgColor[pgto]:'';
+    return`<div class="item ${f.tipo==='rec'?'ig':f.rec==='fixo'?'ir':'ia'}">
     <div class="ih">
-      <div><div class="iname">${f.desc}</div><div class="imeta">${fmtD(f.data)}${f.cat?' · '+f.cat:''}</div></div>
+      <div style="flex:1">
+        <div class="iname">${f.desc}</div>
+        <div class="imeta">${fmtD(f.data)}${f.cat?' · '+f.cat:''}${pgtoLabel?` · <span style="color:${pgtoColor};font-weight:600">${pgtoLabel}</span>`:''}</div>
+      </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-        <span class="ival" style="color:${f.tipo==='rec'?'var(--gr)':'var(--re)'}">${f.tipo==='rec'?'+':'-'}${fmt(f.valor)}</span>
+        <span class="ival" style="color:${f.tipo==='rec'?'var(--teal)':'var(--rose)'}">${f.tipo==='rec'?'+':'-'}${fmt(f.valor)}</span>
         <button class="btn sm del" onclick="delFin('${f.id}')">×</button>
       </div>
     </div></div>`;
+  };
   const bloco=(lista,t,c)=>lista.length?`<div style="font-size:10px;font-weight:700;color:${c};text-transform:uppercase;letter-spacing:.5px;margin:11px 0 6px;display:flex;justify-content:space-between"><span>${t}</span><span>${fmt(lista.reduce((a,b)=>a+b.valor,0))}</span></div>${lista.slice(0,20).map(row).join('')}`:'';
   e.innerHTML=bloco(rec,'💰 Receitas','var(--gr)')+bloco(fix,'🔒 Fixos','var(--re)')+bloco(vri,'📊 Variáveis','var(--am)')||`<p class="empty">Nenhum lançamento.</p>`;
 }
@@ -2046,20 +2171,25 @@ function rDivs(){
     const divs=arr(DB.div).filter(d=>d.cat===cat);
     const pC={alta:'r',media:'a',baixa:'x'};
     e.innerHTML=divs.length?divs.map(d=>{const p=Math.round(d.pago/d.total*100);
+      const pLabel={alta:'🔴 Alta',media:'🟡 Média',baixa:'🟢 Baixa'};
       return`<div class="item ir">
         <div class="ih">
-          <div><div class="iname">${d.nome}</div><div class="imeta">Total: ${fmt(d.total)} · Pago: ${fmt(d.pago)}</div></div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-            <span class="bdg ${pC[d.pri]||'x'}">${d.pri}</span>
-            <span class="ival" style="color:var(--re)">${fmt(d.total-d.pago)}</span>
-            <button class="btn sm del" onclick="delDiv('${d.id}')">×</button>
+          <div style="flex:1">
+            <div class="iname">${d.nome}</div>
+            <div class="imeta">Total: ${fmt(d.total)} · Pago: ${fmt(d.pago)}${d.obs?' · '+d.obs:''}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+            <span class="bdg ${pC[d.pri]||'x'}">${pLabel[d.pri]||d.pri}</span>
+            <span class="ival" style="color:var(--rose)">${fmt(d.total-d.pago)}</span>
           </div>
         </div>
         <div class="pb"><div class="pf ${p<50?'r':p<80?'a':'g'}" style="width:${Math.min(p,100)}%"></div></div>
         <div style="font-size:11px;color:var(--t3);margin-top:4px">${p}% quitado</div>
-        <div style="display:flex;gap:7px;margin-top:9px">
-          <input type="number" id="ab-${d.id}" placeholder="Valor a pagar" inputmode="decimal" style="flex:1">
-          <button class="btn sm g" onclick="abaterDiv('${d.id}')">Registrar</button>
+        <div style="display:flex;gap:7px;margin-top:10px;align-items:center">
+          <input type="number" id="ab-${d.id}" placeholder="Registrar pagamento (R$)" inputmode="decimal" style="flex:1">
+          <button class="btn sm g" onclick="abaterDiv('${d.id}')">✓ Pagar</button>
+          <button class="btn sm" style="background:rgba(56,189,248,.1);color:var(--sky);border:1px solid rgba(56,189,248,.25)" onclick="abrirEditDiv('${d.id}')">✏️ Editar</button>
+          <button class="btn sm del" onclick="delDiv('${d.id}')">×</button>
         </div>
       </div>`;}).join(''):`<p class="empty">Nenhuma dívida.</p>`;
   });
