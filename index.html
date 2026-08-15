@@ -545,6 +545,48 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   </div>
 </div>
 
+<!-- SETUP JSONBIN -->
+<div id="fb-setup-view" style="display:none;padding:0">
+  <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;background:var(--ink);overflow-y:auto">
+    <div style="width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,#1a0d40,#2d1a70);border:1px solid rgba(124,92,252,.35);display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 0 40px rgba(124,92,252,.2)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(155,126,255,.9)" stroke-width="2" stroke-linecap="round" style="width:34px;height:34px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+    </div>
+    <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px;text-align:center">Conectar ao banco de dados</div>
+    <div style="font-size:13px;color:var(--t2);margin-bottom:24px;text-align:center;line-height:1.6;max-width:340px">Use o <b style="color:var(--tx)">JSONBin</b> — gratuito, sem autenticação de dois fatores, pronto em 2 minutos.</div>
+
+    <div style="width:100%;max-width:360px">
+      <div style="background:var(--s2);border:1px solid rgba(124,92,252,.3);border-radius:var(--r);padding:18px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">📋 Passo a passo (2 minutos)</div>
+        <div style="font-size:13px;color:var(--t2);line-height:2.2">
+          <b style="color:var(--tx);background:rgba(124,92,252,.15);padding:1px 7px;border-radius:4px">1</b>&nbsp;
+          Acesse <a href="https://jsonbin.io" target="_blank" style="color:var(--vio2);font-weight:700">jsonbin.io</a> → <b style="color:var(--tx)">Sign Up</b><br>
+          <b style="color:var(--tx);background:rgba(124,92,252,.15);padding:1px 7px;border-radius:4px">2</b>&nbsp;
+          Entre com o <b style="color:var(--tx)">Gmail</b> (botão Google)<br>
+          <b style="color:var(--tx);background:rgba(124,92,252,.15);padding:1px 7px;border-radius:4px">3</b>&nbsp;
+          No menu clique <b style="color:var(--tx)">API Keys</b> → <b style="color:var(--tx)">+ Create Access Key</b><br>
+          <b style="color:var(--tx);background:rgba(124,92,252,.15);padding:1px 7px;border-radius:4px">4</b>&nbsp;
+          Nome: <em>luah</em> → marque <b style="color:var(--tx)">Read</b> e <b style="color:var(--tx)">Write</b> → Create<br>
+          <b style="color:var(--tx);background:rgba(124,92,252,.15);padding:1px 7px;border-radius:4px">5</b>&nbsp;
+          Copie a chave gerada e cole abaixo<br>
+          <b style="color:var(--tx);background:rgba(124,92,252,.15);padding:1px 7px;border-radius:4px">6</b>&nbsp;
+          Clique <b style="color:var(--tx)">Conectar</b> — o app cria o banco sozinho ✅
+        </div>
+      </div>
+
+      <div class="fg"><label>Chave de acesso JSONBin (API Key)</label>
+        <input id="jb-key-input" type="text" placeholder="Cole sua API Key aqui" autocomplete="off" style="font-size:13px;letter-spacing:.5px">
+      </div>
+      <div id="jb-err" style="display:none;font-size:12px;color:var(--rose);margin-bottom:10px;text-align:center"></div>
+      <button class="btn pri" id="jb-connect-btn" onclick="conectarJSONBin()" style="font-size:15px;padding:14px">Conectar e salvar dados</button>
+      <div class="sp"></div>
+      <button class="btn ghost" onclick="pularFbSetup()" style="font-size:13px">Usar sem sincronização por agora</button>
+      <div style="margin-top:14px;font-size:11px;color:var(--t3);text-align:center;line-height:1.7">
+        No celular do marido: abra o link do Netlify,<br>entre com a senha e cole a <b>mesma API Key</b>.<br>Os dois veem os mesmos dados em tempo real.
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- INÍCIO -->
 <div id="v-dash" class="view on">
   <div id="avisos"></div>
@@ -739,7 +781,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <div class="card">
       <div class="r2">
         <div class="fg"><label>Tipo</label>
-          <select id="ftp" onchange="toggleFC()"><option value="rec">Receita</option><option value="desp">Despesa empresa</option><option value="casa">Despesa casa</option></select>
+          <select id="ftp" onchange="toggleFC(this)"><option value="rec">Receita</option><option value="desp">Despesa empresa</option><option value="casa">Despesa casa</option></select>
         </div>
         <div class="fg"><label>Valor (R$)</label><input id="fv" type="number" placeholder="0,00" inputmode="decimal"></div>
       </div>
@@ -755,7 +797,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       </div>
       <div class="r2">
         <div class="fg"><label>Forma de pagamento</label>
-          <select id="fpgto">
+          <select id="fpgto" onchange="toggleParcelas()">
             <option value="">Não informado</option>
             <option value="pix">Pix</option>
             <option value="dinheiro">Dinheiro</option>
@@ -988,7 +1030,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   <button onclick="closeMore()" style="margin-top:12px;width:100%;background:transparent;border:1px solid var(--line);border-radius:var(--rs);padding:10px;color:var(--t3);font-size:13px;cursor:pointer;font-family:Inter">Fechar</button>
 </div>
 
-<!-- sem Firebase -->
+<!-- JSONBin — sem Firebase -->
 <script>
 'use strict';
 /* ═══════ CONSTANTES ═══════════════════════════════ */
@@ -1001,7 +1043,7 @@ const D=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 
 let DB={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}};
 let _syncInterval=null;
-let vozData=null,rec=null,idxIdeia=0;
+let vozData=null,rec=null,idxIdeia=0,_syncTimer=null;
 
 /* ═══════ UTILS ════════════════════════════════════ */
 const fmt=v=>'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1031,9 +1073,9 @@ function syncUI(ok,msg){
 }
 
 /* ═══════════════════════════════════════════════════
-   STORAGE COMPARTILHADO — sem Firebase, sem config
-   window.storage.get/set com shared:true = os dois
-   celulares veem os mesmos dados pelo mesmo link.
+   STORAGE — Firebase Realtime Database
+   Gratuito, funciona no Netlify, sincroniza em tempo
+   real entre os dois celulares.
 ═══════════════════════════════════════════════════ */
 
 /* ─── HASH de senha (SHA-256) ────────────────────── */
@@ -1047,18 +1089,9 @@ async function fazerLogin(){
   const s=$('login-senha').value.trim();
   if(!s){mostrarErroLogin('Digite a senha');return;}
   const h=await hashSenha(s);
-  // Verificar senha no storage compartilhado
-  let senhaOk=false;
-  try{
-    const r=await window.storage.get(SENHA_KEY,true);
-    if(r&&r.value===h)senhaOk=true;
-  }catch(e){}
-  // Fallback: localStorage (caso storage compartilhado não disponível)
-  if(!senhaOk){
-    const local=localStorage.getItem('luah_senha_hash');
-    if(local&&local===h)senhaOk=true;
-  }
-  if(!senhaOk){mostrarErroLogin('Senha incorreta. Tente novamente.');return;}
+  const local=localStorage.getItem('luah_senha_hash');
+  if(!local){mostrarErroLogin('Nenhuma senha cadastrada ainda. Crie uma abaixo.');return;}
+  if(h!==local){mostrarErroLogin('Senha incorreta. Tente novamente.');return;}
   entrarNoApp();
 }
 
@@ -1068,10 +1101,8 @@ async function criarSenha(){
   if(!ns||ns.length<6){mostrarErroCriar('Mínimo 6 caracteres');return;}
   if(ns!==cs){mostrarErroCriar('As senhas não coincidem');return;}
   const h=await hashSenha(ns);
-  // Salvar no storage compartilhado (ambos os celulares recebem)
-  try{await window.storage.set(SENHA_KEY,h,true);}catch(e){}
   localStorage.setItem('luah_senha_hash',h);
-  toast('✅ Senha criada! Compartilhe o link com o marido.');
+  toast('✅ Senha criada! Compartilhe com o marido.');
   entrarNoApp();
 }
 
@@ -1080,94 +1111,161 @@ function mostrarErroCriar(m){const e=$('criar-erro');e.textContent=m;e.style.dis
 
 function entrarNoApp(){
   $('login-view').style.display='none';
+  if(!jbKey()||!jbBin()){
+    // Primeira vez — pedir API Key JSONBin
+    $('fb-setup-view').style.display='block';
+    return;
+  }
   sessionStorage.setItem('luah_logado','1');
-  iniciarSync();
+  carregarJB();
 }
 
 function sair(){
+  clearInterval(_syncTimer);
   sessionStorage.removeItem('luah_logado');
   location.reload();
 }
 
-/* ─── SAVE / LOAD via window.storage compartilhado ─ */
+/* ═══════════════════════════════════════════════════
+   STORAGE — JSONBin.io
+   Banco de dados gratuito, sem Firebase, sem 2FA.
+   API: https://api.jsonbin.io/v3/b/<BIN_ID>
+   Header: X-Master-Key: <API_KEY>
+═══════════════════════════════════════════════════ */
+const JB_BASE = 'https://api.jsonbin.io/v3';
+
+function jbKey(){ return localStorage.getItem('luah_jb_key')||''; }
+function jbBin(){ return localStorage.getItem('luah_jb_bin')||''; }
+
+function loadLocal(){try{const s=localStorage.getItem(STORAGE_KEY);if(s)Object.assign(DB,JSON.parse(s));}catch(e){}}
+function saveLocal(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));}catch(e){}}
+
 async function save(){
-  const json=JSON.stringify(DB);
-  // 1. Tentar storage compartilhado (sincronia entre celulares)
+  saveLocal(); // sempre salva local como backup
+  const key=jbKey(),bin=jbBin();
+  if(!key||!bin){syncUI(false,'local');return;}
   try{
-    await window.storage.set(STORAGE_KEY,json,true);
-    syncUI(true,'salvo '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
-  }catch(e){
-    // 2. Fallback localStorage
-    try{localStorage.setItem(STORAGE_KEY,json);}catch(e2){}
-    syncUI(false,'salvo local');
-  }
+    const r=await fetch(`${JB_BASE}/b/${bin}`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Versioning':'false'},
+      body:JSON.stringify(DB)
+    });
+    if(r.ok){syncUI(true,'salvo '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));}
+    else{syncUI(false,'erro ao salvar');}
+  }catch(e){syncUI(false,'sem conexão');}
 }
 
-async function carregarDados(){
-  // 1. Tentar storage compartilhado
+async function carregarJB(){
+  const key=jbKey(),bin=jbBin();
+  if(!key||!bin){loadLocal();render();return;}
   try{
-    const r=await window.storage.get(STORAGE_KEY,true);
-    if(r&&r.value){
-      Object.assign(DB,{shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}},JSON.parse(r.value));
-      syncUI(true,'sincronizado');
-      return;
+    const r=await fetch(`${JB_BASE}/b/${bin}/latest`,{
+      headers:{'X-Master-Key':key}
+    });
+    if(r.ok){
+      const j=await r.json();
+      const d=j.record;
+      if(d&&typeof d==='object')Object.assign(DB,{shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}},d);
+      saveLocal();
+      syncUI(true,'online');
+    } else {
+      loadLocal();syncUI(false,'erro ao carregar');
     }
-  }catch(e){}
-  // 2. Fallback localStorage
-  try{
-    const s=localStorage.getItem(STORAGE_KEY);
-    if(s)Object.assign(DB,JSON.parse(s));
-  }catch(e){}
-  syncUI(false,'local');
-}
-
-function iniciarSync(){
-  carregarDados().then(()=>{
-    const m=$('eqmed');if(m&&DB.meta?.mediaShow)m.value=DB.meta.mediaShow;
-    render();
-  });
-  // Atualizar a cada 10s (pega mudanças do outro celular)
-  clearInterval(_syncInterval);
-  _syncInterval=setInterval(async()=>{
+  }catch(e){loadLocal();syncUI(false,'sem conexão');}
+  const m=$('eqmed');if(m&&DB.meta?.mediaShow)m.value=DB.meta.mediaShow;
+  render();
+  // Sync a cada 15s para pegar mudanças do outro celular
+  clearInterval(_syncTimer);
+  _syncTimer=setInterval(async()=>{
+    const key=jbKey(),bin=jbBin();if(!key||!bin)return;
     try{
-      const r=await window.storage.get(STORAGE_KEY,true);
-      if(r&&r.value){
-        const novo=JSON.parse(r.value);
-        // Só re-render se mudou algo
-        if(JSON.stringify(novo)!==JSON.stringify(DB)){
-          Object.assign(DB,{shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}},novo);
-          render();
+      const r=await fetch(`${JB_BASE}/b/${bin}/latest`,{headers:{'X-Master-Key':key}});
+      if(r.ok){
+        const j=await r.json();const d=j.record;
+        if(d&&JSON.stringify(d)!==JSON.stringify(DB)){
+          Object.assign(DB,{shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}},d);
+          saveLocal();render();
         }
         syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
       }
     }catch(e){}
-  },10000);
-}
-async function save(){
-  if(useFB&&FB){try{await FB.ref('/luah').set(DB);syncUI(true,'salvo '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));}catch{syncUI(false,'erro ao salvar');}}
-  else saveLocal();
+  },15000);
 }
 
+async function conectarJSONBin(){
+  const key=$('jb-key-input').value.trim();
+  const btn=$('jb-connect-btn');
+  const err=$('jb-err');
+  if(!key){err.textContent='Cole a API Key';err.style.display='block';return;}
+  btn.textContent='Conectando…';btn.disabled=true;
+  try{
+    // Criar um bin novo com dados iniciais
+    const r=await fetch(`${JB_BASE}/b`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':'luah-producao','X-Bin-Private':'false'},
+      body:JSON.stringify(DB)
+    });
+    if(!r.ok){
+      const t=await r.text();
+      err.textContent='Chave inválida. Verifique e tente novamente.';
+      err.style.display='block';
+      btn.textContent='Conectar e salvar dados';btn.disabled=false;
+      return;
+    }
+    const j=await r.json();
+    const binId=j.metadata?.id||j.record?.id||j.id;
+    if(!binId){err.textContent='Erro ao criar banco. Tente novamente.';err.style.display='block';btn.textContent='Conectar e salvar dados';btn.disabled=false;return;}
+    localStorage.setItem('luah_jb_key',key);
+    localStorage.setItem('luah_jb_bin',binId);
+    $('fb-setup-view').style.display='none';
+    sessionStorage.setItem('luah_logado','1');
+    syncUI(true,'conectado');
+    toast('✅ Banco criado! ID: '+binId);
+    render();
+    // Iniciar sync automático
+    clearInterval(_syncTimer);
+    _syncTimer=setInterval(async()=>{
+      try{const r2=await fetch(`${JB_BASE}/b/${binId}/latest`,{headers:{'X-Master-Key':key}});
+        if(r2.ok){const j2=await r2.json();const d=j2.record;
+          if(d&&JSON.stringify(d)!==JSON.stringify(DB)){Object.assign(DB,{shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}},d);saveLocal();render();}
+          syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+        }
+      }catch(e){}
+    },15000);
+  }catch(e){
+    err.textContent='Erro de conexão. Verifique sua internet.';
+    err.style.display='block';
+    btn.textContent='Conectar e salvar dados';btn.disabled=false;
+  }
+}
+
+function pularFbSetup(){
+  $('fb-setup-view').style.display='none';
+  sessionStorage.setItem('luah_logado','1');
+  syncUI(false,'modo local');
+  loadLocal();render();
+}
+
+function salvarFbUrl(){conectarJSONBin();}
+function initFB(){carregarJB();}
+function iniciarSync(){carregarJB();}
+
 /* ═══════ INIT ══════════════════════════════════ */
-window.addEventListener('load',async()=>{
+window.addEventListener('load',()=>{
   if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
   const logado=sessionStorage.getItem('luah_logado');
   if(logado){
-    entrarNoApp();
+    $('login-view').style.display='none';
+    $('fb-setup-view').style.display='none';
+    if(jbKey()&&jbBin()){carregarJB();}
+    else{syncUI(false,'local');loadLocal();render();}
   } else {
     $('login-view').style.display='block';
     $('v-dash').classList.remove('on');
-    // Verificar se já tem senha no storage compartilhado
-    // (caso o marido seja o primeiro a criar)
-    try{
-      const r=await window.storage.get(SENHA_KEY,true);
-      if(r&&r.value)localStorage.setItem('luah_senha_hash',r.value);
-    }catch(e){}
   }
   toggleFC();
   ['sd','fdt','mdt','pdt'].forEach(id=>{const e=$(id);if(e)e.value=today();});
   renderConteudo();
-  if('Notification'in window&&Notification.permission==='default')setTimeout(()=>Notification.requestPermission(),3000);
 });
 
 /* ═══════ NAV ═══════════════════════════════════ */
@@ -1304,19 +1402,19 @@ function calcNota(){
 }
 
 /* ═══════ FINANCEIRO ════════════════════════════ */
-function toggleFC(){
+function toggleFC(_){
   const t=$('ftp')?.value;
   if($('fcg'))$('fcg').style.display=t==='desp'?'flex':'none';
   if($('fc2g'))$('fc2g').style.display=t==='casa'?'flex':'none';
+  // Receita não tem forma de pagamento — ocultar o bloco inteiro
+  const fpRow=$('fpgto')?.closest('.r2');
+  if(fpRow)fpRow.style.display=t==='rec'?'none':'grid';
 }
 function toggleParcelas(){
   const fp=$('fpgto')?.value;
-  const pg=$('fparcg');if(pg)pg.style.display=fp==='credito-parcelado'?'flex':'none';
+  const pg=$('fparcg');
+  if(pg)pg.style.display=fp==='credito-parcelado'?'flex':'none';
 }
-// ligar o evento ao select de forma de pagamento
-document.addEventListener('DOMContentLoaded',()=>{
-  const sel=$('fpgto');if(sel)sel.addEventListener('change',toggleParcelas);
-});
 
 /* Classificação */
 const KFX=['aluguel','financiamento','internet','netflix','spotify','amazon','apple','deezer','distribui','escola','faculdade','condominio','condomínio','mensalidade','seguro','celular','telefone','água','agua','luz','energia','gás','gas','plano'];
