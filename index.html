@@ -2141,21 +2141,34 @@ function rDash(){
     </div>`).join(''):`<p class="empty">Nenhum show próximo.</p>`);
   // Previsão mês a mês — shows pontuais + NFs de séries emitidas
   const porMes={};
-  const hj=today();
-  // Shows pontuais pendentes (não série)
-  arr(DB.shows).filter(s=>!s.serie&&s.status!=='recebido'&&s.status!=='cancelado'&&s.recData>hj).forEach(s=>{
+  const hj=new Date().toISOString().slice(0,10); // data atual real
+  // Shows pontuais pendentes (não série) com recData no futuro
+  arr(DB.shows).filter(s=>!s.serie&&s.status!=='recebido'&&s.status!=='cancelado'&&s.recData&&s.recData>hj).forEach(s=>{
     const k=s.recData.slice(0,7);porMes[k]=(porMes[k]||0)+(s.liq||0);
   });
+  // Shows pontuais que estão como agendado mas data de recebimento já passou — incluir no mês atual
+  arr(DB.shows).filter(s=>!s.serie&&s.status==='agendado'&&s.recData&&s.recData<=hj).forEach(s=>{
+    const k=hj.slice(0,7);porMes[k]=(porMes[k]||0)+(s.liq||0);
+  });
   // NFs mensais de séries emitidas
-  arr(DB.nfMensal||{}).filter(n=>n.status==='emitida'&&n.dtRecebimento>hj).forEach(n=>{
-    const k=n.dtRecebimento.slice(0,7);porMes[k]=(porMes[k]||0)+(n.liq||0);
+  arr(DB.nfMensal||{}).filter(n=>n.status==='emitida').forEach(n=>{
+    const k=n.dtRecebimento>hj?n.dtRecebimento.slice(0,7):hj.slice(0,7);
+    porMes[k]=(porMes[k]||0)+(n.liq||0);
   });
   const mk=Object.keys(porMes).sort();
+  const mesSeg=(()=>{const d=new Date();d.setMonth(d.getMonth()+1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
   set('d-prev',mk.length?mk.map(k=>{
     const[y,m2]=k.split('-');
     const lb=new Date(+y,+m2-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-    return`<div class="item igold"><div class="ih"><span class="iname" style="text-transform:capitalize">${lb}</span><span style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--gold)">${fmt(porMes[k])}</span></div></div>`;
-  }).join(''):`<p class="empty">Nenhuma previsão. Emita NFs das séries ou atualize status dos shows.</p>`);
+    const isSeg=k===mesSeg;
+    return`<div style="display:flex;align-items:center;justify-content:space-between;background:${isSeg?'rgba(232,184,109,.1)':'var(--s2)'};border:1px solid ${isSeg?'rgba(232,184,109,.3)':'var(--line)'};border-radius:12px;padding:13px 15px;margin-bottom:8px">
+      <div>
+        <div style="font-size:13px;font-weight:600;text-transform:capitalize;color:${isSeg?'var(--gold)':'var(--tx)'}">${lb}</div>
+        ${isSeg?`<div style="font-size:10px;color:var(--gold);margin-top:2px">⭐ próximo recebimento</div>`:''}
+      </div>
+      <div style="font-family:'Syne',sans-serif;font-size:${isSeg?'22':'18'}px;font-weight:800;color:${isSeg?'var(--gold)':'var(--teal)'}">${fmt(porMes[k])}</div>
+    </div>`;
+  }).join(''):`<div style="text-align:center;padding:18px;color:var(--t3);font-size:13px;line-height:1.6">Nenhum recebimento previsto.<br><small>Emita NFs ou marque shows como "NF emitida".</small></div>`);
   // Metas
   const media=DB.meta?.mediaShow||0;
   set('d-metas',arr(DB.equip).slice(0,3).map(e=>{const p=Math.round(e.eco/e.preco*100);const ns=media>0?Math.ceil(Math.max(0,e.preco-e.eco)/media):null;
@@ -2167,33 +2180,80 @@ function rDash(){
 
 function showItem(sh){
   const past=sh.data<today();
-  return`<div class="item ${sh.serie?'iv':'ig'}" style="${past?'opacity:.6':''}">
-    <div class="ih">
-      <div style="flex:1"><div class="iname">${sh.nome}${sh.serie?` <span class="bdg v" style="font-size:9px">série</span>`:''}</div><div class="imeta">${fmtD(sh.data)} ${sh.hora?'às '+sh.hora:''} · ${sh.tipo}</div></div>
-      <span class="bdg ${sh.status==='recebido'?'g':sh.status==='nf'?'b':'a'}">${sh.status==='nf'?'NF':sh.status}</span>
+  const stColor={agendado:'var(--amber)',nf:'var(--sky)',recebido:'var(--teal)'}[sh.status]||'var(--t3)';
+  const stLabel={agendado:'📅 Agendado',nf:'📄 NF emitida',recebido:'✅ Recebido'}[sh.status]||sh.status;
+  return`<div style="background:var(--s2);border:1px solid var(--line);border-left:4px solid ${sh.serie?'var(--vio)':'var(--teal)'};border-radius:14px;padding:14px;margin-bottom:9px;${past?'opacity:.6':''}">
+
+    <!-- Topo: nome + status badge -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;line-height:1.3">${sh.nome}</div>
+        <div style="font-size:12px;color:var(--t2);margin-top:3px">${fmtD(sh.data)}${sh.hora?' às '+sh.hora:''} · ${sh.tipo}${sh.serie?' <span style="color:var(--vio2)">· Série</span>':''}</div>
+      </div>
+      <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:${stColor}18;color:${stColor};border:1px solid ${stColor}44;white-space:nowrap">${stLabel}</span>
     </div>
-    <div class="sg">
-      <div>Bruto<b>${sh.valor?fmt(sh.valor):'—'}</b></div>
-      <div>Imposto<b style="color:var(--re)">-${sh.imp?fmt(sh.imp):'—'}</b></div>
-      <div>Líquido<b style="color:var(--gr)">${sh.liq?fmt(sh.liq):'—'}</b></div>
-      <div>Recebimento<b>${fmtD(sh.recData)}</b></div>
+
+    <!-- Valores em grid -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;background:var(--s3);border-radius:10px;padding:11px;margin-bottom:11px">
+      <div style="text-align:center">
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Bruto</div>
+        <div style="font-size:14px;font-weight:800;color:var(--tx)">${sh.valor?fmt(sh.valor):'<span style="color:var(--amber)">—</span>'}</div>
+      </div>
+      <div style="text-align:center;border-left:1px solid var(--line);border-right:1px solid var(--line)">
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Líquido</div>
+        <div style="font-size:14px;font-weight:800;color:var(--teal)">${sh.liq?fmt(sh.liq):'—'}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Recebimento</div>
+        <div style="font-size:12px;font-weight:700;color:var(--gold)">${sh.recData?fmtD(sh.recData):'—'}</div>
+      </div>
     </div>
-    <div class="brow">
-      <button class="btn sm ${sh.status==='agendado'?'on':''}" onclick="setStatus('${sh.id}','agendado')">Agendado</button>
-      <button class="btn sm ${sh.status==='nf'?'on':''}" onclick="setStatus('${sh.id}','nf')">NF emitida</button>
-      <button class="btn sm ${sh.status==='recebido'?'on':''}" onclick="setStatus('${sh.id}','recebido')">Recebido</button>
-      ${sh.serie?`<button class="btn sm" style="background:rgba(240,92,122,.1);color:var(--re);border:1px solid rgba(240,92,122,.2)" onclick="cancelarOc('${sh.id}')">Cancelar este</button>`:''}
-      <button class="btn wa" onclick="waEquipe('${sh.id}')">📲 Equipe</button>
-      <button class="btn sm del" onclick="delShow('${sh.id}')">×</button>
+
+    <!-- Botões de status rápido -->
+    <div style="display:flex;gap:5px;margin-bottom:9px;flex-wrap:wrap">
+      <button onclick="setStatus('${sh.id}','agendado')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid ${sh.status==='agendado'?'var(--amber)':'var(--line)'};background:${sh.status==='agendado'?'rgba(245,158,11,.15)':'transparent'};color:${sh.status==='agendado'?'var(--amber)':'var(--t3)'};font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">📅 Agendado</button>
+      <button onclick="setStatus('${sh.id}','nf')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid ${sh.status==='nf'?'var(--sky)':'var(--line)'};background:${sh.status==='nf'?'rgba(56,189,248,.15)':'transparent'};color:${sh.status==='nf'?'var(--sky)':'var(--t3)'};font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">📄 NF emitida</button>
+      <button onclick="setStatus('${sh.id}','recebido')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid ${sh.status==='recebido'?'var(--teal)':'var(--line)'};background:${sh.status==='recebido'?'rgba(34,211,160,.15)':'transparent'};color:${sh.status==='recebido'?'var(--teal)':'var(--t3)'};font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">✅ Recebido</button>
+    </div>
+
+    <!-- Ações secundárias -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <button onclick="abrirEditShow('${sh.id}')" style="background:rgba(56,189,248,.1);color:var(--sky);border:1px solid rgba(56,189,248,.25);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">✏️ Editar</button>
+      <button onclick="waEquipe('${sh.id}')" style="background:rgba(37,211,102,.1);color:#25d366;border:1px solid rgba(37,211,102,.25);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">📲 Equipe</button>
+      ${sh.serie?`<button onclick="cancelarOc('${sh.id}')" style="background:rgba(242,93,124,.1);color:var(--rose);border:1px solid rgba(242,93,124,.25);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">✖ Cancelar este</button>`:''}
+      <button onclick="delShow('${sh.id}')" style="background:rgba(242,93,124,.08);color:var(--rose);border:1px solid rgba(242,93,124,.2);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:Inter;margin-left:auto">🗑</button>
     </div>
   </div>`;
 }
 function rShows(){
   const e=$('lista-shows');if(!e)return;
-  const s=arr(DB.shows).filter(x=>x.status!=='cancelado').sort((a,b)=>a.data.localeCompare(b.data));
-  const fut=s.filter(x=>x.data>=today()),pas=s.filter(x=>x.data<today()).slice(-8).reverse();
-  e.innerHTML=(fut.length?`<div class="sl">Próximos</div>`+fut.map(showItem).join(''):'')+
-    (pas.length?`<div class="sl">Histórico</div>`+pas.map(showItem).join(''):'') ||`<p class="empty">Nenhum show cadastrado.</p>`;
+  const hj=today();
+  const todos=arr(DB.shows).filter(x=>x.status!=='cancelado').sort((a,b)=>a.data.localeCompare(b.data));
+  const fut=todos.filter(x=>x.data>=hj);
+  const pas=todos.filter(x=>x.data<hj).reverse().slice(0,8);
+
+  // Resumo visual dos próximos
+  const totalFut=fut.reduce((a,b)=>a+(b.liq||0),0);
+  const pendentes=fut.filter(s=>s.status!=='recebido').length;
+  const resumo=fut.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+    <div style="background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:11px;text-align:center">
+      <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:5px">Próximos</div>
+      <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--vio2)">${fut.length}</div>
+    </div>
+    <div style="background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:11px;text-align:center">
+      <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:5px">A receber</div>
+      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--teal)">${fmt(totalFut)}</div>
+    </div>
+    <div style="background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:11px;text-align:center">
+      <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:5px">Pendentes</div>
+      <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--amber)">${pendentes}</div>
+    </div>
+  </div>`:'';
+
+  e.innerHTML=resumo+
+    (fut.length?`<div class="sl">Próximos shows</div>`+fut.map(showItem).join(''):'')+
+    (pas.length?`<div class="sl">Histórico recente</div>`+pas.map(showItem).join(''):'') ||
+    `<div class="empty"><div style="font-size:32px;margin-bottom:10px">🎵</div><div>Nenhum show cadastrado.<br>Toque em <b>+ Show</b> para adicionar.</div></div>`;
 }
 
 /* ─── NF MENSAL DE SÉRIES ─────────────────────────
@@ -2369,58 +2429,139 @@ function rPagSel(){
 function rFin(){
   const e=$('lista-fin');if(!e)return;
   const s=arr(DB.fin).sort((a,b)=>b.data.localeCompare(a.data));
-  const rec=s.filter(f=>f.tipo==='rec'),fix=s.filter(f=>f.tipo!=='rec'&&f.rec==='fixo'),vri=s.filter(f=>f.tipo!=='rec'&&f.rec!=='fixo');
+  if(!s.length){e.innerHTML=`<div class="empty"><div style="font-size:28px;margin-bottom:8px">💰</div>Nenhum lançamento.<br>Use o campo acima ou o botão <b>+ Lançar</b>.</div>`;return;}
+
+  const rec=s.filter(f=>f.tipo==='rec');
+  const fix=s.filter(f=>f.tipo!=='rec'&&f.rec==='fixo');
+  const vri=s.filter(f=>f.tipo!=='rec'&&f.rec!=='fixo');
+  const tR=rec.reduce((a,b)=>a+b.valor,0);
+  const tF=fix.reduce((a,b)=>a+b.valor,0);
+  const tV=vri.reduce((a,b)=>a+b.valor,0);
+
+  // Resumo visual no topo
+  const resumo=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:14px">
+    <div style="background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);border-radius:12px;padding:11px;text-align:center">
+      <div style="font-size:9px;font-weight:700;color:var(--teal);text-transform:uppercase;margin-bottom:4px">💰 Receitas</div>
+      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--teal)">+${fmt(tR)}</div>
+    </div>
+    <div style="background:rgba(242,93,124,.07);border:1px solid rgba(242,93,124,.18);border-radius:12px;padding:11px;text-align:center">
+      <div style="font-size:9px;font-weight:700;color:var(--rose);text-transform:uppercase;margin-bottom:4px">🔒 Fixos</div>
+      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--rose)">-${fmt(tF)}</div>
+    </div>
+    <div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.18);border-radius:12px;padding:11px;text-align:center">
+      <div style="font-size:9px;font-weight:700;color:var(--amber);text-transform:uppercase;margin-bottom:4px">📊 Variáveis</div>
+      <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--amber)">-${fmt(tV)}</div>
+    </div>
+  </div>`;
+
   const pgLabel={'pix':'Pix','dinheiro':'💵 Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':'Crédito parcelado'};
-  const pgColor={'pix':'var(--teal)','dinheiro':'var(--teal)','debito':'var(--sky)','credito-vista':'var(--vio2)','credito-parcelado':'var(--vio2)'};
+  const pgColor={'pix':'var(--teal)','dinheiro':'var(--gold)','debito':'var(--sky)','credito-vista':'var(--vio2)','credito-parcelado':'var(--vio2)'};
+
   const row=f=>{
+    const isRec=f.tipo==='rec';
+    const isFix=!isRec&&f.rec==='fixo';
     const pgto=f.pgto&&f.pgto!==''?f.pgto:null;
-    const pgtoLabel=pgto?(pgLabel[pgto]+(f.parc&&pgto==='credito-parcelado'?' '+f.parc+'x':'')):'';
-    const pgtoColor=pgto?pgColor[pgto]:'';
-    return`<div class="item ${f.tipo==='rec'?'ig':f.rec==='fixo'?'ir':'ia'}">
-    <div class="ih">
-      <div style="flex:1">
-        <div class="iname">${f.desc}</div>
-        <div class="imeta">${fmtD(f.data)}${f.cat?' · '+f.cat:''}${pgtoLabel?` · <span style="color:${pgtoColor};font-weight:600">${pgtoLabel}</span>`:''}</div>
+    const pgtoStr=pgto?(pgLabel[pgto]+(f.parc&&pgto==='credito-parcelado'?' '+f.parc+'x':'')):null;
+    const pgtoClr=pgto?pgColor[pgto]:'';
+    const cor=isRec?'var(--teal)':isFix?'var(--rose)':'var(--amber)';
+    const borda=isRec?'var(--teal)':isFix?'var(--rose)':'var(--amber)';
+    return`<div style="display:flex;align-items:center;background:var(--s2);border:1px solid var(--line);border-left:3px solid ${borda};border-radius:12px;padding:12px 13px;margin-bottom:7px;gap:10px">
+      <!-- Ícone tipo -->
+      <div style="width:36px;height:36px;border-radius:10px;background:${cor}14;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${isRec?'💰':isFix?'🔒':'📊'}</div>
+      <!-- Info principal -->
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.desc}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+          ${fmtD(f.data)}
+          ${f.cat?`<span style="color:var(--t3)">·</span><span>${f.cat}</span>`:''}
+          ${pgtoStr?`<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;background:${pgtoClr}14;color:${pgtoClr};border:1px solid ${pgtoClr}33">${pgtoStr}</span>`:''}
+        </div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-        <span class="ival" style="color:${f.tipo==='rec'?'var(--teal)':'var(--rose)'}">${f.tipo==='rec'?'+':'-'}${fmt(f.valor)}</span>
-        <button class="btn sm del" onclick="delFin('${f.id}')">×</button>
+      <!-- Valor -->
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:14px;font-weight:800;color:${cor}">${isRec?'+':'-'}${fmt(f.valor)}</div>
       </div>
-    </div></div>`;
+      <!-- Ações -->
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+        <button onclick="abrirEditFin('${f.id}')" style="background:rgba(56,189,248,.1);color:var(--sky);border:1px solid rgba(56,189,248,.22);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:Inter">✏️</button>
+        <button onclick="delFin('${f.id}')" style="background:rgba(242,93,124,.08);color:var(--rose);border:1px solid rgba(242,93,124,.2);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:Inter">🗑</button>
+      </div>
+    </div>`;
   };
-  const bloco=(lista,t,c)=>lista.length?`<div style="font-size:10px;font-weight:700;color:${c};text-transform:uppercase;letter-spacing:.5px;margin:11px 0 6px;display:flex;justify-content:space-between"><span>${t}</span><span>${fmt(lista.reduce((a,b)=>a+b.valor,0))}</span></div>${lista.slice(0,20).map(row).join('')}`:'';
-  e.innerHTML=bloco(rec,'💰 Receitas','var(--gr)')+bloco(fix,'🔒 Fixos','var(--re)')+bloco(vri,'📊 Variáveis','var(--am)')||`<p class="empty">Nenhum lançamento.</p>`;
+
+  const bloco=(lista,tit,cor)=>lista.length?`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px">
+      <span style="font-size:10px;font-weight:700;color:${cor};text-transform:uppercase;letter-spacing:.6px">${tit}</span>
+      <span style="font-size:12px;font-weight:700;color:${cor}">${fmt(lista.reduce((a,b)=>a+b.valor,0))}</span>
+    </div>
+    ${lista.slice(0,25).map(row).join('')}
+  `:'';
+
+  e.innerHTML=resumo+bloco(rec,'💰 Receitas','var(--teal)')+bloco(fix,'🔒 Fixos','var(--rose)')+bloco(vri,'📊 Variáveis','var(--amber)');
 }
 function rDivs(){
   ['empresa','casa'].forEach(cat=>{
     const suf=cat==='empresa'?'emp':'cas';
     const e=$('ldiv-'+suf);if(!e)return;
     const divs=arr(DB.div).filter(d=>d.cat===cat);
-    const pC={alta:'r',media:'a',baixa:'x'};
-    e.innerHTML=divs.length?divs.map(d=>{const p=Math.round(d.pago/d.total*100);
-      const pLabel={alta:'🔴 Alta',media:'🟡 Média',baixa:'🟢 Baixa'};
-      return`<div class="item ir">
-        <div class="ih">
+    if(!divs.length){e.innerHTML=`<p class="empty">Nenhuma dívida ${cat==='empresa'?'de empresa':'pessoal/casa'}.</p>`;return;}
+
+    const total=divs.reduce((a,b)=>a+(b.total||0),0);
+    const pago=divs.reduce((a,b)=>a+(b.pago||0),0);
+    const aberto=total-pago;
+
+    const resumoCat=`<div style="background:rgba(242,93,124,.07);border:1px solid rgba(242,93,124,.18);border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--rose);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">${divs.length} dívida${divs.length!==1?'s':''} em aberto</div>
+        <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--rose)">${fmt(aberto)}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;color:var(--t3);margin-bottom:3px">Quitado</div>
+        <div style="font-size:16px;font-weight:700;color:var(--teal)">${fmt(pago)}</div>
+      </div>
+    </div>`;
+
+    const priColors={alta:'var(--rose)',media:'var(--amber)',baixa:'var(--teal)'};
+    const priIcons={alta:'🔴',media:'🟡',baixa:'🟢'};
+
+    const cards=divs.sort((a,b)=>{const o={alta:0,media:1,baixa:2};return o[a.pri]-o[b.pri];}).map(d=>{
+      const rest=d.total-d.pago;
+      const perc=d.total>0?Math.round(d.pago/d.total*100):0;
+      const pClr=priColors[d.pri]||'var(--t3)';
+      return`<div style="background:var(--s2);border:1px solid var(--line);border-left:4px solid ${pClr};border-radius:13px;padding:14px;margin-bottom:9px">
+        <!-- Header -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px">
           <div style="flex:1">
-            <div class="iname">${d.nome}</div>
-            <div class="imeta">Total: ${fmt(d.total)} · Pago: ${fmt(d.pago)}${d.obs?' · '+d.obs:''}</div>
+            <div style="font-size:14px;font-weight:700">${priIcons[d.pri]||''} ${d.nome}</div>
+            ${d.obs?`<div style="font-size:11px;color:var(--t2);margin-top:2px">${d.obs}</div>`:''}
           </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
-            <span class="bdg ${pC[d.pri]||'x'}">${pLabel[d.pri]||d.pri}</span>
-            <span class="ival" style="color:var(--rose)">${fmt(d.total-d.pago)}</span>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--rose)">${fmt(rest)}</div>
+            <div style="font-size:10px;color:var(--t3)">de ${fmt(d.total)}</div>
           </div>
         </div>
-        <div class="pb"><div class="pf ${p<50?'r':p<80?'a':'g'}" style="width:${Math.min(p,100)}%"></div></div>
-        <div style="font-size:11px;color:var(--t3);margin-top:4px">${p}% quitado</div>
-        <div style="display:flex;gap:7px;margin-top:10px;align-items:center">
-          <input type="number" id="ab-${d.id}" placeholder="Registrar pagamento (R$)" inputmode="decimal" style="flex:1">
-          <button class="btn sm g" onclick="abaterDiv('${d.id}')">✓ Pagar</button>
-          <button class="btn sm" style="background:rgba(56,189,248,.1);color:var(--sky);border:1px solid rgba(56,189,248,.25)" onclick="abrirEditDiv('${d.id}')">✏️ Editar</button>
-          <button class="btn sm del" onclick="delDiv('${d.id}')">×</button>
+        <!-- Progress bar proeminente -->
+        <div style="background:var(--s3);border-radius:8px;height:10px;overflow:hidden;margin-bottom:5px">
+          <div style="height:10px;border-radius:8px;background:linear-gradient(90deg,${pClr},${perc>60?'var(--teal)':pClr});width:${Math.min(perc,100)}%;transition:width .5s"></div>
         </div>
-      </div>`;}).join(''):`<p class="empty">Nenhuma dívida.</p>`;
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-bottom:12px">
+          <span>${perc}% quitado</span>
+          <span>Falta: <b style="color:var(--rose)">${fmt(rest)}</b></span>
+        </div>
+        <!-- Registrar pagamento inline -->
+        <div style="background:var(--s3);border-radius:10px;padding:11px;display:flex;gap:7px;align-items:center">
+          <input type="number" id="ab-${d.id}" placeholder="Valor a pagar agora (R$)" inputmode="decimal" style="flex:1;font-size:13px;padding:9px 11px;background:var(--s2)">
+          <button onclick="abaterDiv('${d.id}')" style="background:var(--teal);color:#050b18;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:Inter">✓ Pagar</button>
+          <button onclick="abrirEditDiv('${d.id}')" style="background:rgba(56,189,248,.1);color:var(--sky);border:1px solid rgba(56,189,248,.22);border-radius:8px;padding:9px 10px;font-size:12px;cursor:pointer;font-family:Inter">✏️</button>
+          <button onclick="delDiv('${d.id}')" style="background:rgba(242,93,124,.08);color:var(--rose);border:1px solid rgba(242,93,124,.2);border-radius:8px;padding:9px 10px;font-size:12px;cursor:pointer;font-family:Inter">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    e.innerHTML=resumoCat+cards;
   });
 }
+
 function rEquip(){
   const e=$('lista-equip');if(!e)return;
   const media=DB.meta?.mediaShow||0;
