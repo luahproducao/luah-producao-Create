@@ -629,7 +629,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       </div>
       <div class="r2">
         <div class="fg"><label>Horário</label><input id="sh" type="time" value="20:00"></div>
-        <div class="fg"><label>Valor bruto (R$)</label><input id="sv" type="number" placeholder="0,00" inputmode="decimal"></div>
+        <div class="fg"><label>Valor bruto (R$)</label><input id="sv" type="number" placeholder="0,00" inputmode="decimal" oninput="atualizarEscalacao('s')"></div>
       </div>
       <div class="r2">
         <div class="fg"><label>Prazo pagamento</label>
@@ -640,7 +640,41 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
         </div>
       </div>
       <div class="fg"><label>Observações</label><textarea id="sobs" placeholder="Endereço, contato, detalhes..."></textarea></div>
-      <button class="btn pri" onclick="addShow()">Adicionar show</button>
+
+      <!-- ESCALAÇÃO -->
+      <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">👥 Escalação do show</div>
+          <button type="button" onclick="toggleNovoMembro('s')" style="font-size:11px;background:rgba(124,92,252,.12);color:var(--vio2);border:1px solid rgba(124,92,252,.25);border-radius:20px;padding:4px 11px;cursor:pointer;font-family:Inter;font-weight:700">+ Novo membro</button>
+        </div>
+        <div id="escala-s" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+        <!-- Formulário rápido de novo membro -->
+        <div id="novo-mb-s" style="display:none;background:var(--s3);border:1px solid rgba(124,92,252,.2);border-radius:var(--rs);padding:12px;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--vio2);margin-bottom:9px">Cadastrar membro rapidamente</div>
+          <div class="r2">
+            <div class="fg"><label>Nome</label><input id="nm-s-nome" placeholder="ex: João Brito"></div>
+            <div class="fg"><label>Função</label>
+              <select id="nm-s-fn">
+                <optgroup label="Músicos"><option>Guitarra</option><option>Baixo</option><option>Bateria</option><option>Percussão</option><option>Teclado</option><option>Violão</option><option>Saxofone</option><option>Trompete</option><option>Backing vocal</option><option>Vocalista</option></optgroup>
+                <optgroup label="Técnicos"><option>Técnico de som (FOH)</option><option>Road / carregador</option><option>Iluminação</option><option>DJ</option><option>Motorista</option></optgroup>
+                <optgroup label="Outros"><option>Outro</option></optgroup>
+              </select>
+            </div>
+          </div>
+          <div class="r2">
+            <div class="fg"><label>Valor por show (R$)</label><input id="nm-s-val" type="number" placeholder="0,00" inputmode="decimal"></div>
+            <div class="fg"><label>WhatsApp (DDD)</label><input id="nm-s-wa" type="tel" placeholder="71999999999"></div>
+          </div>
+          <div style="display:flex;gap:7px">
+            <button type="button" onclick="salvarNovoMembroEscala('s')" class="btn pri" style="flex:1;font-size:13px;padding:10px">Salvar e incluir</button>
+            <button type="button" onclick="toggleNovoMembro('s')" class="btn ghost" style="font-size:13px;padding:10px">Cancelar</button>
+          </div>
+        </div>
+        <!-- Preview do custo da escalação -->
+        <div id="escala-s-preview" style="display:none;background:var(--s3);border-radius:var(--rs);padding:10px 12px;font-size:12px;color:var(--t2)"></div>
+      </div>
+
+      <button class="btn pri" onclick="addShow()" style="margin-top:14px">Adicionar show</button>
     </div>
   </div>
   <div id="sns" style="display:none">
@@ -684,7 +718,38 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
           <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2);cursor:pointer"><input type="checkbox" value="11" style="width:auto"> Dez</label>
         </div>
       </div>
-      <button class="btn pri" onclick="addSerie()">Criar série recorrente</button>
+      <!-- ESCALAÇÃO DA SÉRIE -->
+      <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">👥 Escalação fixa da série</div>
+          <button type="button" onclick="toggleNovoMembro('r')" style="font-size:11px;background:rgba(124,92,252,.12);color:var(--vio2);border:1px solid rgba(124,92,252,.25);border-radius:20px;padding:4px 11px;cursor:pointer;font-family:Inter;font-weight:700">+ Novo membro</button>
+        </div>
+        <div id="escala-r" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+        <div id="novo-mb-r" style="display:none;background:var(--s3);border:1px solid rgba(124,92,252,.2);border-radius:var(--rs);padding:12px;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--vio2);margin-bottom:9px">Cadastrar membro rapidamente</div>
+          <div class="r2">
+            <div class="fg"><label>Nome</label><input id="nm-r-nome" placeholder="ex: João Brito"></div>
+            <div class="fg"><label>Função</label>
+              <select id="nm-r-fn">
+                <optgroup label="Músicos"><option>Guitarra</option><option>Baixo</option><option>Bateria</option><option>Percussão</option><option>Teclado</option><option>Violão</option><option>Saxofone</option><option>Trompete</option><option>Backing vocal</option><option>Vocalista</option></optgroup>
+                <optgroup label="Técnicos"><option>Técnico de som (FOH)</option><option>Road / carregador</option><option>Iluminação</option><option>DJ</option><option>Motorista</option></optgroup>
+                <optgroup label="Outros"><option>Outro</option></optgroup>
+              </select>
+            </div>
+          </div>
+          <div class="r2">
+            <div class="fg"><label>Valor por show (R$)</label><input id="nm-r-val" type="number" placeholder="0,00" inputmode="decimal"></div>
+            <div class="fg"><label>WhatsApp (DDD)</label><input id="nm-r-wa" type="tel" placeholder="71999999999"></div>
+          </div>
+          <div style="display:flex;gap:7px">
+            <button type="button" onclick="salvarNovoMembroEscala('r')" class="btn pri" style="flex:1;font-size:13px;padding:10px">Salvar e incluir</button>
+            <button type="button" onclick="toggleNovoMembro('r')" class="btn ghost" style="font-size:13px;padding:10px">Cancelar</button>
+          </div>
+        </div>
+        <div id="escala-r-preview" style="display:none;background:var(--s3);border-radius:var(--rs);padding:10px 12px;font-size:12px;color:var(--t2)"></div>
+      </div>
+
+      <button class="btn pri" onclick="addSerie()" style="margin-top:14px">Criar série recorrente</button>
     </div>
   </div>
 </div>
@@ -1301,7 +1366,11 @@ function sub(id,btn){
   btn.closest('.itabs').querySelectorAll('.itab').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
   SUBS.forEach(s=>{const e=$(s);if(e)e.style.display='none';});
-  $(id).style.display='block';render();
+  $(id).style.display='block';
+  // Inicializar escalação ao abrir formulários de show
+  if(id==='sna')setTimeout(()=>renderEscala('s'),50);
+  if(id==='sns')setTimeout(()=>renderEscala('r'),50);
+  render();
 }
 
 /* ═══════ QUICK-ADD ═════════════════════════════ */
@@ -1329,28 +1398,125 @@ function qaAdd(){
 }
 
 /* ═══════ SHOWS ═════════════════════════════════ */
+/* ── ESCALAÇÃO ──────────────────────────────────── */
+// Armazena escalação temporária enquanto preenche o formulário
+let _escalaTemp={s:{},r:{}};
+
+function renderEscala(prefix){
+  const eq=arr(DB.equipe);
+  const container=$('escala-'+prefix);if(!container)return;
+  const valor=+($(prefix==='s'?'sv':'rv').value)||0;
+  const liq=+(valor*(1-TAX)).toFixed(2);
+
+  if(!eq.length){
+    container.innerHTML=`<div style="font-size:12px;color:var(--t3);padding:8px 0">Nenhum membro cadastrado ainda. Use "+ Novo membro" acima.</div>`;
+    return;
+  }
+
+  container.innerHTML=eq.map(m=>{
+    const sel=_escalaTemp[prefix][m.id];
+    const vShow=m.perc>0&&valor?+(valor*(m.perc/100)).toFixed(2):m.val;
+    return`<div style="display:flex;align-items:center;gap:10px;background:${sel?'rgba(34,211,160,.06)':'var(--s3)'};border:1px solid ${sel?'rgba(34,211,160,.2)':'var(--line)'};border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .15s" onclick="toggleMembro('${prefix}','${m.id}')">
+      <div style="width:22px;height:22px;border-radius:6px;border:2px solid ${sel?'var(--teal)':'var(--line2)'};background:${sel?'var(--teal)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s">
+        ${sel?'<svg viewBox="0 0 12 10" fill="none" style="width:12px"><path d="M1 5l3.5 3.5L11 1" stroke="#050b18" stroke-width="2" stroke-linecap="round"/></svg>':''}
+      </div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:${sel?'var(--tx)':'var(--t2)'}">${m.nome}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:1px">${m.fn}${vShow?` · <span style="color:${sel?'var(--teal)':'var(--t3)'}">${fmt(vShow)}</span>`:''}</div>
+      </div>
+      ${sel&&vShow?`<div style="font-size:13px;font-weight:700;color:var(--teal)">${fmt(vShow)}</div>`:''}
+    </div>`;
+  }).join('');
+  atualizarPreviewEscala(prefix);
+}
+
+function toggleMembro(prefix,mbId){
+  if(_escalaTemp[prefix][mbId])delete _escalaTemp[prefix][mbId];
+  else _escalaTemp[prefix][mbId]=true;
+  renderEscala(prefix);
+}
+
+function atualizarPreviewEscala(prefix){
+  const valor=+($(prefix==='s'?'sv':'rv').value)||0;
+  const liq=+(valor*(1-TAX)).toFixed(2);
+  const selecionados=Object.keys(_escalaTemp[prefix]).filter(id=>DB.equipe[id]);
+  const prev=$('escala-'+prefix+'-preview');if(!prev)return;
+  if(!selecionados.length||!valor){prev.style.display='none';return;}
+  const totalEq=selecionados.reduce((a,mbId)=>{
+    const m=DB.equipe[mbId];if(!m)return a;
+    return a+(m.perc>0?+(valor*(m.perc/100)).toFixed(2):m.val||0);
+  },0);
+  const saldo=liq-totalEq;
+  prev.style.display='block';
+  prev.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>${selecionados.length} membro(s) escalado(s)</span><span style="color:var(--rose)">-${fmt(totalEq)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px"><span>Saldo artista (líq.)</span><span style="color:${saldo>=0?'var(--teal)':'var(--rose)'}">${fmt(saldo)}</span></div>`;
+}
+
+function atualizarEscalacao(prefix){
+  renderEscala(prefix);
+}
+
+function toggleNovoMembro(prefix){
+  const el=$('novo-mb-'+prefix);
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function salvarNovoMembroEscala(prefix){
+  const nome=$(('nm-'+prefix+'-nome')).value.trim();
+  const val=+$(('nm-'+prefix+'-val')).value||0;
+  if(!nome){toast('Informe o nome','err');return;}
+  const id=uid();
+  DB.equipe[id]={id,nome,fn:$(('nm-'+prefix+'-fn')).value,val,perc:0,ref:0,pro:0,wa:$(('nm-'+prefix+'-wa')).value.trim()};
+  save();
+  // Marcar como selecionado automaticamente
+  _escalaTemp[prefix][id]=true;
+  // Limpar campos
+  $(('nm-'+prefix+'-nome')).value='';$(('nm-'+prefix+'-val')).value='';$(('nm-'+prefix+'-wa')).value='';
+  $('novo-mb-'+prefix).style.display='none';
+  renderEscala(prefix);
+  toast('✅ '+nome+' adicionado e escalado!');
+}
+
+// Inicializar escalação quando abre a aba
+function initEscala(prefix){
+  _escalaTemp[prefix]={};renderEscala(prefix);
+}
+
 function addShow(){
   const nome=$('sn').value.trim();
   if(!nome){toast('Informe o nome do show','err');return;}
   const valor=parseFloat($('sv').value)||0;
   const data=$('sd').value||today();
   const prazo=+$('sp').value;
+  const escalacao=Object.keys(_escalaTemp['s']).filter(id=>DB.equipe[id]).map(id=>{
+    const m=DB.equipe[id];
+    const vShow=m.perc>0&&valor?+(valor*(m.perc/100)).toFixed(2):m.val||0;
+    return{mbId:id,nome:m.nome,fn:m.fn,val:vShow};
+  });
   const id=uid();
-  DB.shows[id]={id,nome,data,hora:$('sh').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('stp').value,obs:$('sobs').value.trim(),status:'agendado',recData:addDays(data,prazo),serie:false,falta:!valor?['valor']:[]};
-  save();$('sn').value='';$('sv').value='';$('sobs').value='';
-  toast('✅ Show adicionado!');
+  DB.shows[id]={id,nome,data,hora:$('sh').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('stp').value,obs:$('sobs').value.trim(),status:'agendado',recData:addDays(data,prazo),serie:false,falta:!valor?['valor']:[],escalacao};
+  save();
+  $('sn').value='';$('sv').value='';$('sobs').value='';
+  _escalaTemp['s']={};renderEscala('s');
+  toast('✅ Show adicionado!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
 function addSerie(){
   const nome=$('rn').value.trim(),inicio=$('ri').value;
-  if(!nome||!inicio){toast('Nome e data de início são obrigatórios','err');return;}
+  if(!nome||!inicio){toast('Nome e início obrigatórios','err');return;}
   const valor=parseFloat($('rv').value)||0;
   const ferias=Array.from(document.querySelectorAll('#mferias input:checked')).map(c=>+c.value);
+  const escalacao=Object.keys(_escalaTemp['r']).filter(id=>DB.equipe[id]).map(id=>{
+    const m=DB.equipe[id];
+    const vShow=m.perc>0&&valor?+(valor*(m.perc/100)).toFixed(2):m.val||0;
+    return{mbId:id,nome:m.nome,fn:m.fn,val:vShow};
+  });
   const id=uid();
-  DB.series[id]={id,nome,dia:+$('rd').value,hora:$('rh').value||'21:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),inicio,fim:$('rf').value||'',prazo:+$('rp').value,tipo:$('rtp').value,ferias,cancelados:[]};
+  DB.series[id]={id,nome,dia:+$('rd').value,hora:$('rh').value||'21:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),inicio,fim:$('rf').value||'',tipo:$('rtp').value,ferias,cancelados:[],escalacao};
   gerarSerie(id);save();
   $('rn').value='';$('rv').value='';$('ri').value='';$('rf').value='';
   document.querySelectorAll('#mferias input').forEach(c=>c.checked=false);
-  toast('✅ Série criada!');
+  _escalaTemp['r']={};renderEscala('r');
+  toast('✅ Série criada!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
 function gerarSerie(sid){
   const s=DB.series[sid];if(!s)return;
@@ -2215,6 +2381,15 @@ function showItem(sh){
       <button onclick="setStatus('${sh.id}','nf')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid ${sh.status==='nf'?'var(--sky)':'var(--line)'};background:${sh.status==='nf'?'rgba(56,189,248,.15)':'transparent'};color:${sh.status==='nf'?'var(--sky)':'var(--t3)'};font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">📄 NF emitida</button>
       <button onclick="setStatus('${sh.id}','recebido')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid ${sh.status==='recebido'?'var(--teal)':'var(--line)'};background:${sh.status==='recebido'?'rgba(34,211,160,.15)':'transparent'};color:${sh.status==='recebido'?'var(--teal)':'var(--t3)'};font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">✅ Recebido</button>
     </div>
+
+    <!-- Escalação do show -->
+    ${sh.escalacao&&sh.escalacao.length?`<div style="margin-bottom:10px;background:var(--s3);border-radius:10px;padding:10px 12px">
+      <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">👥 Escalação (${sh.escalacao.length} membro${sh.escalacao.length!==1?'s':''})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${sh.escalacao.map(m=>`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(34,211,160,.1);color:var(--teal);border:1px solid rgba(34,211,160,.2)">${m.nome}${m.val?` · ${fmt(m.val)}`:''}</span>`).join('')}
+      </div>
+      ${sh.valor?`<div style="margin-top:7px;font-size:11px;color:var(--t3)">Total equipe: <b style="color:var(--rose)">${fmt(sh.escalacao.reduce((a,m)=>a+(m.val||0),0))}</b> · Saldo artista: <b style="color:var(--teal)">${fmt(+(sh.liq||0)-sh.escalacao.reduce((a,m)=>a+(m.val||0),0))}</b></div>`:''}
+    </div>`:''}
 
     <!-- Ações secundárias -->
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
