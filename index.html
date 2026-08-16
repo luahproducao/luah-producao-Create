@@ -484,11 +484,11 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <div class="hdr-sub" id="slbl">iniciando…</div>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:8px">
-    <div class="sync-pill">
-      <div class="sdot" id="sdot"></div>
-      <span id="stxt">—</span>
+  <div style="display:flex;align-items:center;gap:7px">
+    <div class="sync-pill" onclick="atualizarApp()" style="cursor:pointer" title="Toque para sincronizar">
+      <div class="sdot" id="sdot"></div><span id="stxt">—</span>
     </div>
+    <button onclick="atualizarApp()" id="btn-refresh" title="Atualizar dados" style="background:rgba(124,92,252,.12);border:1px solid rgba(124,92,252,.25);border-radius:20px;width:30px;height:30px;font-size:14px;cursor:pointer;transition:transform .5s;display:flex;align-items:center;justify-content:center">🔄</button>
     <button onclick="sair()" style="background:transparent;border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--t3);cursor:pointer;font-family:Inter">Sair</button>
   </div>
 </header>
@@ -1208,6 +1208,28 @@ function sair(){
   location.reload();
 }
 
+async function atualizarApp(){
+  const btn=$('btn-refresh');
+  if(btn){btn.style.transform='rotate(720deg)';setTimeout(()=>{btn.style.transition='none';btn.style.transform='';setTimeout(()=>btn.style.transition='transform .5s',50);},500);}
+  const key=jbKey(),bin=jbBin();
+  if(!key||!bin){
+    toast('Recarregando o app…');setTimeout(()=>location.reload(true),700);return;
+  }
+  syncUI(false,'sincronizando…');
+  try{
+    const r=await fetch(`${JB_BASE}/b/${bin}/latest`,{headers:{'X-Master-Key':key}});
+    if(r.ok){
+      const j=await r.json();const d=j.record;
+      if(d&&typeof d==='object'){
+        DB={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{},...d};
+        saveLocal();render();
+      }
+      syncUI(true,'atualizado ✓ '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+      toast('✅ Dados atualizados!');
+    }else{toast('Erro ao sincronizar','err');syncUI(false,'erro');}
+  }catch(e){toast('Sem conexão — dados locais','err');syncUI(false,'offline');}
+}
+
 /* ═══════════════════════════════════════════════════
    STORAGE — JSONBin.io
    Banco de dados gratuito, sem Firebase, sem 2FA.
@@ -1219,7 +1241,16 @@ const JB_BASE = 'https://api.jsonbin.io/v3';
 function jbKey(){ return localStorage.getItem('luah_jb_key')||''; }
 function jbBin(){ return localStorage.getItem('luah_jb_bin')||''; }
 
-function loadLocal(){try{const s=localStorage.getItem(STORAGE_KEY);if(s)Object.assign(DB,JSON.parse(s));}catch(e){}}
+function loadLocal(){
+  try{
+    const s=localStorage.getItem(STORAGE_KEY);
+    if(s){
+      // Substituir completamente — não mesclar (evita itens deletados voltarem)
+      const parsed=JSON.parse(s);
+      DB={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{},...parsed};
+    }
+  }catch(e){console.warn('loadLocal erro:',e);}
+}
 function saveLocal(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));}catch(e){}}
 
 async function save(){
@@ -1247,31 +1278,46 @@ async function carregarJB(){
     if(r.ok){
       const j=await r.json();
       const d=j.record;
-      if(d&&typeof d==='object')Object.assign(DB,{shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}},d);
+      if(d&&typeof d==='object'){
+        // Substituir completamente — garantir que deletados não voltem
+        DB={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{},...d};
+      }
       saveLocal();
-      syncUI(true,'online');
+      syncUI(true,'online ✓');
     } else {
       loadLocal();syncUI(false,'erro ao carregar');
     }
   }catch(e){loadLocal();syncUI(false,'sem conexão');}
   const m=$('eqmed');if(m&&DB.meta?.mediaShow)m.value=DB.meta.mediaShow;
   render();
-  // Sync a cada 15s para pegar mudanças do outro celular
+  // Sync a cada 20s — usa versão do JSONBin para detectar mudança real
   clearInterval(_syncTimer);
+  let _lastVer='';
   _syncTimer=setInterval(async()=>{
     const key=jbKey(),bin=jbBin();if(!key||!bin)return;
     try{
+      // Busca metadados primeiro (mais leve) para ver se versão mudou
+      const rm=await fetch(`${JB_BASE}/b/${bin}?meta=true`,{headers:{'X-Master-Key':key,'X-Bin-Meta-Only':'true'}});
+      if(!rm.ok)return;
+      const jm=await rm.json();
+      const ver=jm.metadata?.version||jm.version||'';
+      if(ver&&ver===_lastVer){
+        syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+        return; // nada mudou
+      }
+      // Versão mudou — buscar dados completos
       const r=await fetch(`${JB_BASE}/b/${bin}/latest`,{headers:{'X-Master-Key':key}});
       if(r.ok){
         const j=await r.json();const d=j.record;
-        if(d&&JSON.stringify(d)!==JSON.stringify(DB)){
-          Object.assign(DB,{shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}},d);
+        if(d&&typeof d==='object'){
+          DB={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{},...d};
           saveLocal();render();
         }
+        _lastVer=ver;
         syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
       }
     }catch(e){}
-  },15000);
+  },20000);
 }
 
 async function conectarJSONBin(){
