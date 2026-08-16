@@ -692,9 +692,10 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 <!-- EQUIPE -->
 <div id="v-equipe" class="view">
   <div class="itabs">
-    <button class="itab on" onclick="sub('el',this)">Equipe</button>
+    <button class="itab on" onclick="sub('el',this)">👥 Equipe</button>
     <button class="itab"    onclick="sub('ea',this)">+ Membro</button>
-    <button class="itab"    onclick="sub('ep',this)">Pagamentos</button>
+    <button class="itab"    onclick="sub('ep',this)">💸 Pagamentos</button>
+    <button class="itab"    onclick="sub('ec',this)">🧮 Calcular</button>
   </div>
   <div id="el">
     <div id="calc-nota-box" style="display:none">
@@ -746,10 +747,26 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
           <select id="pref"><option value="show">Por show</option><option value="prolabore">Pró-labore</option><option value="outro">Outro</option></select>
         </div>
       </div>
+      <div class="fg"><label>Show referência (opcional)</label>
+        <select id="pshow"><option value="">— nenhum —</option></select>
+      </div>
+      <div class="fg"><label>Observação</label>
+        <input id="pobs" placeholder="ex: Casamento Silva — 15/08">
+      </div>
       <button class="btn pri" onclick="addPag()">Registrar pagamento</button>
     </div>
     <div class="sl">Histórico</div>
     <div id="lista-pag"></div>
+  </div>
+  <div id="ec" style="display:none">
+    <div class="card glass">
+      <div style="font-size:14px;font-weight:700;margin-bottom:11px">🧮 Simulador de divisão por show</div>
+      <div class="notice info">Informe o valor bruto do show para ver quanto cada membro recebe.</div>
+      <div class="fg"><label>Valor bruto do show (R$)</label>
+        <input id="cnota" type="number" placeholder="ex: 3000,00" inputmode="decimal" oninput="calcNota()">
+      </div>
+      <div id="cnota-res"></div>
+    </div>
   </div>
 </div>
 
@@ -1089,7 +1106,7 @@ async function fazerLogin(){
   const s=$('login-senha').value.trim();
   if(!s){mostrarErroLogin('Digite a senha');return;}
   const h=await hashSenha(s);
-  const local=localStorage.getItem('luah_senha_hash');
+  const local=localStorage.getItem(SENHA_KEY);
   if(!local){mostrarErroLogin('Nenhuma senha cadastrada ainda. Crie uma abaixo.');return;}
   if(h!==local){mostrarErroLogin('Senha incorreta. Tente novamente.');return;}
   entrarNoApp();
@@ -1101,7 +1118,7 @@ async function criarSenha(){
   if(!ns||ns.length<6){mostrarErroCriar('Mínimo 6 caracteres');return;}
   if(ns!==cs){mostrarErroCriar('As senhas não coincidem');return;}
   const h=await hashSenha(ns);
-  localStorage.setItem('luah_senha_hash',h);
+  localStorage.setItem(SENHA_KEY,h);
   toast('✅ Senha criada! Compartilhe com o marido.');
   entrarNoApp();
 }
@@ -1116,13 +1133,13 @@ function entrarNoApp(){
     $('fb-setup-view').style.display='block';
     return;
   }
-  sessionStorage.setItem('luah_logado','1');
+  localStorage.setItem('luah_logado','1');
   carregarJB();
 }
 
 function sair(){
   clearInterval(_syncTimer);
-  sessionStorage.removeItem('luah_logado');
+  localStorage.removeItem('luah_logado');
   location.reload();
 }
 
@@ -1218,7 +1235,7 @@ async function conectarJSONBin(){
     localStorage.setItem('luah_jb_key',key);
     localStorage.setItem('luah_jb_bin',binId);
     $('fb-setup-view').style.display='none';
-    sessionStorage.setItem('luah_logado','1');
+    localStorage.setItem('luah_logado','1');
     syncUI(true,'conectado');
     toast('✅ Banco criado! ID: '+binId);
     render();
@@ -1241,7 +1258,7 @@ async function conectarJSONBin(){
 
 function pularFbSetup(){
   $('fb-setup-view').style.display='none';
-  sessionStorage.setItem('luah_logado','1');
+  localStorage.setItem('luah_logado','1');
   syncUI(false,'modo local');
   loadLocal();render();
 }
@@ -1253,7 +1270,7 @@ function iniciarSync(){carregarJB();}
 /* ═══════ INIT ══════════════════════════════════ */
 window.addEventListener('load',()=>{
   if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-  const logado=sessionStorage.getItem('luah_logado');
+  const logado=localStorage.getItem('luah_logado');
   if(logado){
     $('login-view').style.display='none';
     $('fb-setup-view').style.display='none';
@@ -1269,7 +1286,7 @@ window.addEventListener('load',()=>{
 });
 
 /* ═══════ NAV ═══════════════════════════════════ */
-const SUBS=['sa','ss','sna','sns','el','ea','ep','fm','fma','fd','fs'];
+const SUBS=['sa','ss','sna','sns','el','ea','ep','ec','fm','fma','fd','fs'];
 let curTab='dash';
 
 function go(id,btn){
@@ -1386,19 +1403,41 @@ function delMembro(id){if(!confirm('Remover?'))return;delete DB.equipe[id];save(
 function addPag(){
   const mbId=$('pmb').value,val=+$('pv').value||0;
   if(!mbId||!val){toast('Selecione membro e valor','err');return;}
+  const mb=DB.equipe[mbId]||{};
+  const showRef=$('pshow')?.value||'';
+  const showNome=showRef&&DB.shows[showRef]?DB.shows[showRef].nome:'';
   const id=uid();
-  DB.pags[id]={id,mbId,nome:DB.equipe[mbId]?.nome||'?',val,dt:$('pdt').value||today(),ref:$('pref').value};
-  save();$('pv').value='';toast('✅ Pagamento registrado');render();
+  DB.pags[id]={id,mbId,nome:mb.nome||'?',fn:mb.fn||'',val,dt:$('pdt').value||today(),ref:$('pref').value,showRef,showNome,obs:$('pobs')?.value.trim()||showNome};
+  save();$('pv').value='';if($('pobs'))$('pobs').value='';toast('✅ Pagamento registrado');render();
 }
 function calcNota(){
   const nota=+$('cnota').value||0;
-  const eq=arr(DB.equipe).filter(m=>m.perc>0);
   const res=$('cnota-res');if(!res)return;
-  if(!nota||!eq.length){res.innerHTML='';return;}
-  const liq=nota*(1-TAX),tP=eq.reduce((a,m)=>a+(m.perc||0),0);
-  res.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:7px">Nota: ${fmt(nota)} → Líquido: <b style="color:var(--tx)">${fmt(liq)}</b></div>`
-    +eq.map(m=>`<div class="rrow"><span>${m.nome} <span class="bdg v" style="font-size:9px">${m.fn}</span></span><b>${fmt(nota*(m.perc/100))} <small style="font-weight:400;color:var(--t3)">${m.perc.toFixed(1)}%</small></b></div>`).join('')
-    +`<div class="rrow"><span>Total equipe</span><b style="color:var(--re)">${fmt(nota*(tP/100))}</b></div><div class="rrow"><span>Saldo artista (líq.)</span><b style="color:var(--gr)">${fmt(liq-nota*(tP/100))}</b></div>`;
+  if(!nota){res.innerHTML='';return;}
+  const eq=arr(DB.equipe).filter(m=>m.perc>0||m.val>0);
+  if(!eq.length){res.innerHTML='<p style="font-size:13px;color:var(--t3);text-align:center;padding:12px">Nenhum membro com valor cadastrado.</p>';return;}
+  const liq=+(nota*(1-TAX)).toFixed(2);
+  let totalEq=0;
+  const linhas=eq.map(m=>{
+    const v=m.perc>0?+(nota*(m.perc/100)).toFixed(2):m.val;
+    totalEq+=v;
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px">
+      <span style="color:var(--t2)">${m.nome} <span style="font-size:10px;color:var(--t3)">${m.fn}</span></span>
+      <b>${fmt(v)}${m.perc>0?` <span style="font-size:10px;color:var(--vio2)">${m.perc.toFixed(1)}%</span>`:''}</b>
+    </div>`;
+  }).join('');
+  const saldo=liq-totalEq;
+  res.innerHTML=`
+    <div style="background:var(--s3);border:1px solid var(--line);border-radius:var(--rs);padding:12px;margin-top:12px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t3);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--line)">
+        <span>Bruto: <b style="color:var(--tx)">${fmt(nota)}</b></span>
+        <span>Imposto 6%: <b style="color:var(--rose)">-${fmt(+(nota*TAX).toFixed(2))}</b></span>
+        <span>Líquido: <b style="color:var(--teal)">${fmt(liq)}</b></span>
+      </div>
+      ${linhas}
+      <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px"><span style="color:var(--t2)">Total equipe</span><b style="color:var(--rose)">${fmt(totalEq)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:14px;font-weight:700"><span>Saldo artista</span><b style="color:${saldo>=0?'var(--teal)':'var(--rose)'}">${fmt(saldo)}</b></div>
+    </div>`;
 }
 
 /* ═══════ FINANCEIRO ════════════════════════════ */
@@ -1425,18 +1464,38 @@ const classRec=d=>{const t=d.toLowerCase();if(KFX.some(k=>t.includes(k)))return'
 const classSecao=(d,def)=>{const t=d.toLowerCase();if(KEMP.some(k=>t.includes(k)))return'desp';return def;};
 const inferCat=d=>{const t=d.toLowerCase();for(const[k,v]of Object.entries(CAUTO)){if(t.includes(k))return v;}return'Outro';};
 
+function detectPgto(txt){
+  const t=txt.toLowerCase();
+  let pgto='',parc=null;
+  const pm=t.match(/parcelad[oa]?\s*(\d+)\s*x?/i);
+  if(pm){pgto='credito-parcelado';parc=+pm[1];}
+  else if(t.includes('crédito')||t.includes('credito'))pgto='credito-vista';
+  else if(t.includes('débito')||t.includes('debito'))pgto='debito';
+  else if(t.includes('pix'))pgto='pix';
+  else if(t.includes('dinheiro'))pgto='dinheiro';
+  const limpo=txt.replace(/parcelad[oa]?\s*\d+\s*x?/gi,'').replace(/crédito|credito|débito|debito|dinheiro|pix/gi,'').trim();
+  return{pgto,parc,limpo};
+}
+function pgtoTag(pgto,parc){
+  if(!pgto)return'';
+  const labels={'pix':'Pix','dinheiro':'💵 Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':'Crédito '+(parc||'')+'x'};
+  const colors={'pix':'var(--teal)','dinheiro':'var(--gold)','debito':'var(--sky)','credito-vista':'var(--vio2)','credito-parcelado':'var(--vio2)'};
+  return`<span style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(124,92,252,.12);color:${colors[pgto]||'var(--t2)'};border:1px solid rgba(124,92,252,.2)">${labels[pgto]||pgto}</span>`;
+}
 function processarMsg(){
   const txt=$('msgtxt').value.trim(),def=$('mtp').value,data=$('mdt').value||today();
   if(!txt){toast('Digite ao menos um débito','err');return;}
   const linhas=txt.split(/[\n,;—–]+/).map(l=>l.trim()).filter(l=>l.length>2);
   const itens=[];
   linhas.forEach(linha=>{
-    const m=linha.match(/(\d[\d\.]*(?:,\d{1,2})?)\s*$/);
+    const{pgto,parc,limpo}=detectPgto(linha);
+    const limpado=limpo.replace(/[-–—]/g,'').trim();
+    const m=limpado.match(/(\d[\d\.]*(?:,\d{1,2})?)\s*$/);
     if(!m)return;
     const v=parseFloat(m[1].replace(',','.'))||0;if(!v)return;
-    const nome=linha.replace(/\d[\d\.,]*\s*$/,'').replace(/R?\$\s*/,'').replace(/[-–—]/g,'').trim();
+    const nome=limpado.replace(/\d[\d\.,]*\s*$/,'').replace(/R?\$\s*/,'').trim();
     if(!nome)return;
-    itens.push({nome,valor:v,rec:classRec(nome),cat:inferCat(nome),tipo:classSecao(nome,def),data});
+    itens.push({nome,valor:v,rec:classRec(nome),cat:inferCat(nome),tipo:classSecao(nome,def),data,pgto,parc});
   });
   if(!itens.length){toast('Não identifiquei valores. Ex: "Gasolina 250"','err');return;}
   const fix=itens.filter(i=>i.rec==='fixo'),vari=itens.filter(i=>i.rec==='variavel');
@@ -1754,12 +1813,13 @@ function getPeriodo(){
   if(per==='trim'){const q=Math.floor(now.getMonth()/3);return{ini:new Date(now.getFullYear(),q*3,1),fim:new Date(now.getFullYear(),q*3+3,0),label:'T'+(q+1)+'/'+now.getFullYear()};}
   return{ini:new Date(now.getFullYear(),0,1),fim:new Date(now.getFullYear(),11,31),label:'Ano '+now.getFullYear()};
 }
-function calcRel(){
+function renderRel(){
   const{ini,fim,label}=getPeriodo();
   const iS=ini.toISOString().slice(0,10),fS=fim.toISOString().slice(0,10);
-  const showsP=arr(DB.shows).filter(s=>s.data>=iS&&s.data<=fS&&s.status!=='cancelado');
+  const showsP=arr(DB.shows).filter(s=>s.data>=iS&&s.data<=fS&&s.status!=='cancelado').sort((a,b)=>a.data.localeCompare(b.data));
   const finP=arr(DB.fin).filter(f=>f.data>=iS&&f.data<=fS);
   const pagP=arr(DB.pags).filter(p=>p.dt>=iS&&p.dt<=fS);
+
   const tBruto=showsP.reduce((a,b)=>a+(b.valor||0),0);
   const tImp=showsP.reduce((a,b)=>a+(b.imp||0),0);
   const tLiq=showsP.reduce((a,b)=>a+(b.liq||0),0);
@@ -1768,26 +1828,81 @@ function calcRel(){
   const tCasa=finP.filter(f=>f.tipo==='casa').reduce((a,b)=>a+b.valor,0);
   const tPag=pagP.reduce((a,b)=>a+(b.val||0),0);
   const tDiv=arr(DB.div).reduce((a,b)=>a+(b.total-b.pago),0);
-  return{tBruto,tImp,tLiq,tRec,tDesp,tCasa,tPag,tDiv,res:tLiq+tRec-tDesp-tCasa-tPag,qt:showsP.length,label};
-}
-function renderRel(){
-  const r=calcRel();
+  const res=tLiq+tRec-tDesp-tCasa-tPag;
+
+  // Shows item a item
+  const showsDetalhe=showsP.map(s=>
+    `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px;color:var(--t2)">
+      <span>${fmtD(s.data)} · ${s.nome} <span class="bdg ${s.status==='recebido'?'g':s.status==='nf'?'b':'a'}" style="font-size:9px">${s.status==='recebido'?'Rec.':s.status==='nf'?'NF':'Ag.'}</span></span>
+      <b style="color:var(--teal)">${fmt(s.liq)}</b>
+    </div>`).join('');
+
+  // Pagamentos por membro
+  const porMembro={};
+  pagP.forEach(p=>{
+    if(!porMembro[p.mbId])porMembro[p.mbId]={nome:p.nome,fn:p.fn||'',total:0,pags:[]};
+    porMembro[p.mbId].total+=p.val;porMembro[p.mbId].pags.push(p);
+  });
+  const pagDetalhe=Object.values(porMembro).map(mb=>`
+    <div style="background:var(--s3);border:1px solid var(--line);border-radius:var(--rs);padding:11px 13px;margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:7px"><b>${mb.nome} <span style="font-size:10px;color:var(--t3)">${mb.fn}</span></b><b style="color:var(--rose)">-${fmt(mb.total)}</b></div>
+      ${mb.pags.sort((a,b)=>a.dt.localeCompare(b.dt)).map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--line)">${fmtD(p.dt)} · ${p.ref}${p.obs?' · '+p.obs:''}<b style="color:var(--rose)">-${fmt(p.val)}</b></div>`).join('')}
+    </div>`).join('');
+
+  // Previsão de entradas futuras (mês a mês)
+  const hoje=today();
+  const prevMes={};
+  arr(DB.shows).filter(s=>!s.serie&&s.status!=='recebido'&&s.status!=='cancelado'&&s.recData>hoje).forEach(s=>{const k=s.recData.slice(0,7);prevMes[k]=(prevMes[k]||0)+(s.liq||0);});
+  arr(DB.nfMensal||{}).filter(n=>n.status==='emitida'&&n.dtRecebimento>hoje).forEach(n=>{const k=n.dtRecebimento.slice(0,7);prevMes[k]=(prevMes[k]||0)+(n.liq||0);});
+  const prevDetalhe=Object.keys(prevMes).sort().map(k=>{
+    const[y,m2]=k.split('-');const lb=new Date(+y,+m2-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    return`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2);text-transform:capitalize">${lb}<b style="color:var(--gold)">${fmt(prevMes[k])}</b></div>`;
+  }).join('');
+
+  // Próximos recebimentos pendentes (60 dias)
+  const d60=addDays(hoje,60);
+  const pendShows=arr(DB.shows).filter(s=>s.recData>hoje&&s.recData<=d60&&s.status!=='recebido'&&s.status!=='cancelado'&&!s.serie).sort((a,b)=>a.recData.localeCompare(b.recData));
+  const pendNFs=arr(DB.nfMensal||{}).filter(n=>n.status==='emitida'&&n.dtRecebimento>hoje&&n.dtRecebimento<=d60).sort((a,b)=>a.dtRecebimento.localeCompare(b.dtRecebimento));
+
+  // Pró-labore pendente
+  const prosPend=arr(DB.equipe).filter(m=>m.pro>0);
+
   set('rel-body',`
-    <div class="card"><div class="sl" style="margin-top:0">🎵 Shows — ${r.label}</div>
-      <div class="rrow"><span>Shows realizados</span><b>${r.qt}</b></div>
-      <div class="rrow"><span>Receita bruta</span><b>${fmt(r.tBruto)}</b></div>
-      <div class="rrow"><span>Imposto Simples 6%</span><span style="color:var(--re)">-${fmt(r.tImp)}</span></div>
-      <div class="rrow"><span>Receita líquida shows</span><b style="color:var(--gr)">${fmt(r.tLiq)}</b></div>
+    <div class="card">
+      <div class="sl" style="margin-top:0">🎵 Shows — ${label}</div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Quantidade</span><b style="color:var(--tx)">${showsP.length}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Receita bruta</span><b>${fmt(tBruto)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Imposto 6%</span><b style="color:var(--rose)">-${fmt(tImp)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700"><span>Líquido shows</span><b style="color:var(--teal)">${fmt(tLiq)}</b></div>
+      ${showsDetalhe?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Item a item</div>${showsDetalhe}`:''}
     </div>
-    <div class="card"><div class="sl" style="margin-top:0">💰 Financeiro</div>
-      <div class="rrow"><span>Outras receitas</span><span style="color:var(--gr)">+${fmt(r.tRec)}</span></div>
-      <div class="rrow"><span>Despesas empresa</span><span style="color:var(--re)">-${fmt(r.tDesp)}</span></div>
-      <div class="rrow"><span>Despesas casa</span><span style="color:var(--re)">-${fmt(r.tCasa)}</span></div>
-      <div class="rrow"><span>Pagamentos equipe</span><span style="color:var(--re)">-${fmt(r.tPag)}</span></div>
-      <div class="rrow"><span>Resultado total</span><b style="color:${r.res>=0?'var(--gr)':'var(--re)'}">${fmt(r.res)}</b></div>
+
+    <div class="card">
+      <div class="sl" style="margin-top:0">💰 Financeiro — ${label}</div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Outras receitas</span><b style="color:var(--teal)">+${fmt(tRec)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Despesas empresa</span><b style="color:var(--rose)">-${fmt(tDesp)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Despesas casa</span><b style="color:var(--rose)">-${fmt(tCasa)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Pagamentos equipe</span><b style="color:var(--rose)">-${fmt(tPag)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700"><span>Resultado</span><b style="color:${res>=0?'var(--teal)':'var(--rose)'}">${fmt(res)}</b></div>
     </div>
-    <div class="card"><div class="sl" style="margin-top:0">📌 Dívidas em aberto</div>
-      <div class="rrow"><span>Total restante</span><b style="color:var(--re)">${fmt(r.tDiv)}</b></div>
+
+    ${pagDetalhe?`<div class="card"><div class="sl" style="margin-top:0">👥 Pagamentos por membro — ${label}</div>${pagDetalhe}</div>`:''}
+
+    ${prevDetalhe?`<div class="card"><div class="sl" style="margin-top:0">📅 Previsão de entradas (próximos meses)</div>${prevDetalhe}<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700">Total previsto<b style="color:var(--gold)">${fmt(Object.values(prevMes).reduce((a,b)=>a+b,0))}</b></div></div>`:''}
+
+    ${(pendShows.length||pendNFs.length)?`<div class="card"><div class="sl" style="margin-top:0">⏳ Próximos recebimentos (60 dias)</div>
+      ${pendShows.map(s=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)">${fmtD(s.recData)} · ${s.nome}<b style="color:var(--gold)">${fmt(s.liq)}</b></div>`).join('')}
+      ${pendNFs.map(n=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)">${fmtD(n.dtRecebimento)} · NF ${n.mesRef}<b style="color:var(--gold)">${fmt(n.liq)}</b></div>`).join('')}
+    </div>`:''}
+
+    ${prosPend.length?`<div class="card"><div class="sl" style="margin-top:0">💸 Pró-labore mensal (equipe)</div>
+      ${prosPend.map(m=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)">${m.nome} · ${m.fn}<b style="color:var(--amber)">${fmt(m.pro)}/mês</b></div>`).join('')}
+    </div>`:''}
+
+    <div class="card">
+      <div class="sl" style="margin-top:0">💳 Dívidas em aberto</div>
+      ${arr(DB.div).filter(d=>d.total-d.pago>0).map(d=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)">${d.nome} <span class="bdg ${{alta:'r',media:'a',baixa:'x'}[d.pri]}" style="font-size:9px">${d.pri}</span><b style="color:var(--rose)">${fmt(d.total-d.pago)}</b></div>`).join('')||'<div style="padding:7px 0;font-size:13px;color:var(--teal)">✅ Nenhuma dívida em aberto</div>'}
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700">Total em aberto<b style="color:var(--rose)">${fmt(tDiv)}</b></div>
     </div>`);
 }
 function waRel(){
@@ -2024,20 +2139,23 @@ function rDash(){
       <span class="bdg ${s.serie?'v':'b'}">${s.serie?'Série':'Único'}</span></div>
       <div class="sg"><div>Bruto<b>${s.valor?fmt(s.valor):'—'}</b></div><div>Líquido<b style="color:var(--gr)">${s.liq?fmt(s.liq):'—'}</b></div><div>Recebimento<b>${fmtD(s.recData)}</b></div></div>
     </div>`).join(''):`<p class="empty">Nenhum show próximo.</p>`);
-  // Previsão — shows individuais (não-série) + NFs mensais de séries
+  // Previsão mês a mês — shows pontuais + NFs de séries emitidas
   const porMes={};
-  // Shows pontuais (não série) pendentes
-  pend.filter(s=>!s.serie).forEach(s=>{const d=new Date(s.recData+'T12:00');const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;porMes[k]=(porMes[k]||0)+(s.liq||0);});
-  // NFs mensais de séries emitidas e não recebidas
-  arr(DB.nfMensal||{}).filter(n=>n.status==='emitida').forEach(n=>{
-    const d=new Date(n.dtRecebimento+'T12:00');
-    const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    porMes[k]=(porMes[k]||0)+(n.liq||0);
+  const hj=today();
+  // Shows pontuais pendentes (não série)
+  arr(DB.shows).filter(s=>!s.serie&&s.status!=='recebido'&&s.status!=='cancelado'&&s.recData>hj).forEach(s=>{
+    const k=s.recData.slice(0,7);porMes[k]=(porMes[k]||0)+(s.liq||0);
+  });
+  // NFs mensais de séries emitidas
+  arr(DB.nfMensal||{}).filter(n=>n.status==='emitida'&&n.dtRecebimento>hj).forEach(n=>{
+    const k=n.dtRecebimento.slice(0,7);porMes[k]=(porMes[k]||0)+(n.liq||0);
   });
   const mk=Object.keys(porMes).sort();
-  set('d-prev',mk.length?mk.map(k=>{const[y,m2]=k.split('-');const lb=new Date(+y,+m2-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-    return`<div class="item"><div class="ih"><span class="iname" style="text-transform:capitalize">${lb}</span><span style="font-size:18px;font-weight:800;color:var(--gr)">${fmt(porMes[k])}</span></div></div>`;
-  }).join(''):`<p class="empty">Nenhuma previsão de recebimento.</p>`);
+  set('d-prev',mk.length?mk.map(k=>{
+    const[y,m2]=k.split('-');
+    const lb=new Date(+y,+m2-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    return`<div class="item igold"><div class="ih"><span class="iname" style="text-transform:capitalize">${lb}</span><span style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--gold)">${fmt(porMes[k])}</span></div></div>`;
+  }).join(''):`<p class="empty">Nenhuma previsão. Emita NFs das séries ou atualize status dos shows.</p>`);
   // Metas
   const media=DB.meta?.mediaShow||0;
   set('d-metas',arr(DB.equip).slice(0,3).map(e=>{const p=Math.round(e.eco/e.preco*100);const ns=media>0?Math.ceil(Math.max(0,e.preco-e.eco)/media):null;
@@ -2210,7 +2328,6 @@ function rEq(){
   const e=$('lista-eq');if(!e)return;
   const eq=arr(DB.equipe);
   const tP=eq.reduce((a,m)=>a+(m.perc||0),0);
-  $('calc-nota-box').style.display=eq.filter(m=>m.perc>0).length?'block':'none';
   const info=tP>0?`<div class="notice ${tP>100?'err':'ok'}" style="margin-bottom:9px">${tP>100?'⚠️ Total alocado '+tP.toFixed(1)+'% — passa de 100%':'✅ Alocado: '+tP.toFixed(1)+'% · Saldo artista: '+(100-tP).toFixed(1)+'%'}</div>`:'';
   e.innerHTML=info+(eq.length?eq.map(m=>`
     <div class="item ig">
@@ -2230,12 +2347,24 @@ function rEq(){
 function rPags(){
   const e=$('lista-pag');if(!e)return;
   const pg=arr(DB.pags).sort((a,b)=>b.dt.localeCompare(a.dt));
-  e.innerHTML=pg.length?pg.slice(0,20).map(p=>`<div class="item ir"><div class="ih"><div><div class="iname">${p.nome}</div><div class="imeta">${fmtD(p.dt)} · ${p.ref}</div></div><span class="ival" style="color:var(--re)">-${fmt(p.val)}</span></div></div>`).join(''):`<p class="empty">Nenhum pagamento.</p>`;
+  e.innerHTML=pg.length?pg.slice(0,30).map(p=>`<div class="item ir">
+    <div class="ih">
+      <div style="flex:1">
+        <div class="iname">${p.nome} <span class="bdg v" style="font-size:9px">${p.fn||''}</span></div>
+        <div class="imeta">${fmtD(p.dt)} · ${p.ref}${p.obs&&p.obs!==p.fn?' · '+p.obs:''}</div>
+      </div>
+      <span style="font-size:14px;font-weight:700;color:var(--rose)">-${fmt(p.val)}</span>
+    </div>
+  </div>`).join(''):`<p class="empty">Nenhum pagamento registrado.</p>`;
 }
 function rPagSel(){
   const s=$('pmb');if(!s)return;
   const eq=arr(DB.equipe);
   s.innerHTML=eq.length?eq.map(m=>`<option value="${m.id}">${m.nome} (${m.fn})</option>`):'<option>Nenhum membro</option>';
+  // Popular select de shows
+  const ps=$('pshow');if(!ps)return;
+  const shows=arr(DB.shows).filter(sh=>sh.status!=='cancelado').sort((a,b)=>b.data.localeCompare(a.data)).slice(0,30);
+  ps.innerHTML='<option value="">— nenhum —</option>'+shows.map(sh=>`<option value="${sh.id}">${fmtD(sh.data)} · ${sh.nome}</option>`).join('');
 }
 function rFin(){
   const e=$('lista-fin');if(!e)return;
