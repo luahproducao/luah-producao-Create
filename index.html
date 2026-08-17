@@ -1420,7 +1420,7 @@ function sub(id,btn){
 }
 
 /* ═══════ QUICK-ADD ═════════════════════════════ */
-function qaAdd(){
+async function qaAdd(){
   const txt=$('qa-txt').value.trim();if(!txt)return;
   // Detectar forma de pagamento no texto: "pix", "débito", "crédito", "dinheiro", "parcelado Nx"
   let pgto='',parc=null;
@@ -1438,7 +1438,7 @@ function qaAdd(){
   const nome=limpo.replace(/\d[\d\.,]*\s*$/,'').replace(/R?\$\s*/,'').trim()||'Gasto';
   const id=uid();
   DB.fin[id]={id,tipo:classSecao(nome,'desp'),valor:v,desc:nome,data:today(),cat:inferCat(nome),rec:classRec(nome),pgto,parc};
-  save();$('qa-txt').value='';
+  await save();$('qa-txt').value='';
   const pgLabel={'pix':'Pix','dinheiro':'Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':`Crédito ${parc}x`};
   toast('✅ '+nome+' — '+fmt(v)+(pgto?' · '+pgLabel[pgto]:''));render();
 }
@@ -1513,7 +1513,7 @@ function salvarNovoMembroEscala(prefix){
   if(!nome){toast('Informe o nome','err');return;}
   const id=uid();
   DB.equipe[id]={id,nome,fn:$(('nm-'+prefix+'-fn')).value,val,perc:0,ref:0,pro:0,wa:$(('nm-'+prefix+'-wa')).value.trim()};
-  save();
+   await save();
   // Marcar como selecionado automaticamente
   _escalaTemp[prefix][id]=true;
   // Limpar campos
@@ -1528,7 +1528,7 @@ function initEscala(prefix){
   _escalaTemp[prefix]={};renderEscala(prefix);
 }
 
-function addShow(){
+async function addShow(){
   const nome=$('sn').value.trim();
   if(!nome){toast('Informe o nome do show','err');return;}
   const valor=parseFloat($('sv').value)||0;
@@ -1541,12 +1541,12 @@ function addShow(){
   });
   const id=uid();
   DB.shows[id]={id,nome,data,hora:$('sh').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('stp').value,obs:$('sobs').value.trim(),status:'agendado',recData:addDays(data,prazo),serie:false,falta:!valor?['valor']:[],escalacao};
-  save();
+   await save();
   $('sn').value='';$('sv').value='';$('sobs').value='';
   _escalaTemp['s']={};renderEscala('s');
   toast('✅ Show adicionado!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
-function addSerie(){
+async function addSerie(){
   const nome=$('rn').value.trim(),inicio=$('ri').value;
   if(!nome||!inicio){toast('Nome e início obrigatórios','err');return;}
   const valor=parseFloat($('rv').value)||0;
@@ -1558,7 +1558,7 @@ function addSerie(){
   });
   const id=uid();
   DB.series[id]={id,nome,dia:+$('rd').value,hora:$('rh').value||'21:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),inicio,fim:$('rf').value||'',tipo:$('rtp').value,ferias,cancelados:[],escalacao};
-  gerarSerie(id);save();
+   gerarSerie(id); await save();
   $('rn').value='';$('rv').value='';$('ri').value='';$('rf').value='';
   document.querySelectorAll('#mferias input').forEach(c=>c.checked=false);
   _escalaTemp['r']={};renderEscala('r');
@@ -1580,19 +1580,19 @@ function gerarSerie(sid){
     cur.setDate(cur.getDate()+7);n++;
   }
 }
-function setStatus(id,st){if(DB.shows[id]){DB.shows[id].status=st;save();render();}}
-function cancelarOc(showId){
+async function setStatus(id,st){if(DB.shows[id]){DB.shows[id].status=st;await save();render();}}
+async function cancelarOc(showId){
   if(!confirm('Cancelar apenas este show?'))return;
   const sh=DB.shows[showId];if(!sh?.serieId)return;
   const s=DB.series[sh.serieId];
   if(s){s.cancelados=s.cancelados||[];s.cancelados.push(sh.data);}
-  DB.shows[showId].status='cancelado';save();render();
+  DB.shows[showId].status='cancelado';await save();render();
 }
-function delShow(id){if(!confirm('Remover show?'))return;delete DB.shows[id];save();render();}
-function delSerie(id){
+async function delShow(id){if(!confirm('Remover show?'))return;delete DB.shows[id];await save();render();toast('🗑 Show removido');}
+async function delSerie(id){
   if(!confirm('Excluir série e shows futuros?'))return;
   Object.keys(DB.shows).forEach(k=>{if(DB.shows[k].serieId===id&&DB.shows[k].data>=today())delete DB.shows[k];});
-  delete DB.series[id];save();render();
+  delete DB.series[id];await save();render();toast('🗑 Série removida');
 }
 function waEquipe(showId){
   const sh=DB.shows[showId];if(!sh)return;
@@ -1609,10 +1609,10 @@ function addMembro(){
   const nome=$('mn').value.trim();if(!nome){toast('Informe o nome','err');return;}
   const id=uid();
   DB.equipe[id]={id,nome,fn:$('mf').value,val:+$('mv').value||0,perc:+$('mp').value||0,ref:+$('mref').value||0,pro:+$('mpro').value||0,proP:+$('mproP').value||0,wa:$('mwa').value.trim()};
-  save();['mn','mv','mp','mref','mpro','mproP','mwa'].forEach(i=>$(i).value='');toast('✅ Membro adicionado!');render();
+   await save();['mn','mv','mp','mref','mpro','mproP','mwa'].forEach(i=>$(i).value='');toast('✅ Membro adicionado!');render();
 }
-function delMembro(id){if(!confirm('Remover?'))return;delete DB.equipe[id];save();render();}
-function addPag(){
+async function delMembro(id){if(!confirm('Remover?'))return;delete DB.equipe[id];await save();render();toast('🗑 Membro removido');}
+async function addPag(){
   const mbId=$('pmb').value,val=+$('pv').value||0;
   if(!mbId||!val){toast('Selecione membro e valor','err');return;}
   const mb=DB.equipe[mbId]||{};
@@ -1620,7 +1620,7 @@ function addPag(){
   const showNome=showRef&&DB.shows[showRef]?DB.shows[showRef].nome:'';
   const id=uid();
   DB.pags[id]={id,mbId,nome:mb.nome||'?',fn:mb.fn||'',val,dt:$('pdt').value||today(),ref:$('pref').value,showRef,showNome,obs:$('pobs')?.value.trim()||showNome};
-  save();$('pv').value='';if($('pobs'))$('pobs').value='';toast('✅ Pagamento registrado');render();
+  await save();$('pv').value='';if($('pobs'))$('pobs').value='';toast('✅ Pagamento registrado');render();
 }
 function calcNota(){
   const nota=+$('cnota').value||0;
@@ -1735,14 +1735,14 @@ function processarMsg(){
       <button class="btn ghost" onclick="$('msg-prev').innerHTML=''">Cancelar</button>
     </div>`;
 }
-function confirmarMsg(){
+async function confirmarMsg(){
   const itens=window._pend||[];
   itens.forEach(it=>{const id=uid();DB.fin[id]={id,tipo:it.tipo,valor:it.valor,desc:it.nome,data:it.data,cat:it.cat,rec:it.rec,pgto:it.pgto||'',parc:it.parc||null};});
   const n=itens.length;window._pend=null;
-  save();render();$('msg-prev').innerHTML='';$('msgtxt').value='';
+   await save();render();$('msg-prev').innerHTML='';$('msgtxt').value='';
   toast(`✅ ${n} débitos salvos!`);
 }
-function addFin(){
+async function addFin(){
   const tipo=$('ftp').value,valor=+$('fv').value||0,desc=$('fdesc').value.trim();
   if(!desc||!valor){toast('Preencha descrição e valor','err');return;}
   const cat=tipo==='desp'?$('fc').value:tipo==='casa'?$('fc2').value:'';
@@ -1750,23 +1750,23 @@ function addFin(){
   const parc=pgto==='credito-parcelado'?(+$('fparc')?.value||2):null;
   const id=uid();
   DB.fin[id]={id,tipo,valor,desc,data:$('fdt').value||today(),cat,rec:classRec(desc),pgto,parc};
-  save();$('fdesc').value='';$('fv').value='';if($('fpgto'))$('fpgto').value='';if($('fparc'))$('fparc').value='';
+  await save();$('fdesc').value='';$('fv').value='';if($('fpgto'))$('fpgto').value='';if($('fparc'))$('fparc').value='';
   toast('✅ Lançamento salvo');render();
 }
-function delFin(id){if(!confirm('Remover?'))return;delete DB.fin[id];save();render();}
-function addDiv(){
+async function delFin(id){if(!confirm('Remover?'))return;delete DB.fin[id];await save();render();toast('🗑 Lançamento removido');}
+async function addDiv(){
   const nome=$('dvn').value.trim(),total=+$('dvt').value||0;
   if(!nome||!total){toast('Preencha nome e valor','err');return;}
   const id=uid();
   DB.div[id]={id,nome,cat:$('dvcat').value,total,pago:+$('dvp').value||0,pri:$('dvpri').value};
-  save();['dvn','dvt','dvp'].forEach(i=>$(i).value='');toast('✅ Dívida cadastrada');render();
+  await save();['dvn','dvt','dvp'].forEach(i=>$(i).value='');toast('✅ Dívida cadastrada');render();
 }
-function abaterDiv(id){
+async function abaterDiv(id){
   const v=parseFloat($('ab-'+id).value)||0;if(!v)return;
   DB.div[id].pago=Math.min(DB.div[id].pago+v,DB.div[id].total);
-  save();toast('✅ Pagamento registrado');render();
+  await save();toast('✅ Pagamento registrado');render();
 }
-function delDiv(id){if(!confirm('Remover?'))return;delete DB.div[id];save();render();}
+async function delDiv(id){if(!confirm('Remover?'))return;delete DB.div[id];await save();render();toast('🗑 Dívida removida');}
 
 function abrirEditDiv(id){
   const d=DB.div[id];if(!d)return;
@@ -1789,7 +1789,7 @@ function fecharEditDiv(){
   $('div-modal').style.display='none';
 }
 
-function salvarEditDiv(){
+async function salvarEditDiv(){
   const id=$('ediv-id').value;
   if(!DB.div[id])return;
   const nome=$('ediv-nome').value.trim();
@@ -1805,22 +1805,22 @@ function salvarEditDiv(){
     pri:$('ediv-pri').value,
     obs:$('ediv-obs').value.trim()
   };
-  save();fecharEditDiv();toast('✅ Dívida atualizada');render();
+   await save();fecharEditDiv();toast('✅ Dívida atualizada');render();
 }
 
 /* ═══════ EQUIPAMENTOS ══════════════════════════ */
-function addEquip(){
+async function addEquip(){
   const nome=$('eqn').value.trim(),preco=+$('eqp').value||0;
   if(!nome||!preco){toast('Nome e preço obrigatórios','err');return;}
   const id=uid();DB.equip[id]={id,nome,preco,pri:$('eqpri').value,eco:0};
-  save();$('eqn').value='';$('eqp').value='';toast('✅ Equipamento adicionado');render();
+   await save();$('eqn').value='';$('eqp').value='';toast('✅ Equipamento adicionado');render();
 }
-function addEco(id){
+async function addEco(id){
   const v=parseFloat($('eco-'+id).value)||0;if(!v)return;
-  DB.equip[id].eco=Math.min(DB.equip[id].eco+v,DB.equip[id].preco);save();toast('✅ Valor adicionado ao fundo');render();
+   DB.equip[id].eco=Math.min(DB.equip[id].eco+v,DB.equip[id].preco); await save();toast('✅ Valor adicionado ao fundo');render();
 }
-function delEquip(id){if(!confirm('Remover?'))return;delete DB.equip[id];save();render();}
-function saveMedia(){DB.meta.mediaShow=+$('eqmed').value||0;save();}
+async function delEquip(id){if(!confirm('Remover?'))return;delete DB.equip[id];await save();render();toast('🗑 Equipamento removido');}
+async function saveMedia(){DB.meta.mediaShow=+$('eqmed').value||0;await save();}
 
 /* ═══════ VOZ ═══════════════════════════════════ */
 /* ─── VOZ — funciona em Android e iPhone ─────────────
@@ -2013,7 +2013,7 @@ function parseVoz(txt){
 }
 function salvarVoz(){
   if(!vozData)return;
-  DB.shows[vozData.id]=vozData;save();render();
+   DB.shows[vozData.id]=vozData; await save();render();
   $('voz-txt').style.display='none';$('voz-prev').style.display='none';$('voz-ok').style.display='none';
   vozData=null;toast('✅ Show salvo!');
 }
@@ -2278,12 +2278,12 @@ function renderSaude(){
     </div>`;
 }
 
-function pagarDivSaude(id){
+async function pagarDivSaude(id){
   const v=parseFloat($('qs-'+id).value)||0;
   if(!v){toast('Informe o valor a pagar','err');return;}
   if(!DB.div[id])return;
   DB.div[id].pago=Math.min(DB.div[id].pago+v,DB.div[id].total);
-  save();toast('✅ Pagamento registrado!');render();
+  await save();toast('✅ Pagamento registrado!');render();
 }
 
 /* ═══════ CONTEÚDO DIGITAL ══════════════════════ */
@@ -2497,7 +2497,7 @@ function calcNfMes(serieId, mesRef){
   return {qtShows: shows.length, valor, liq};
 }
 
-function emitirNfMensal(serieId, mesRef, dtEmissao){
+async function emitirNfMensal(serieId, mesRef, dtEmissao){
   if(!dtEmissao){ toast('Informe a data de emissão da NF','err'); return; }
   const key = nfKey(serieId, mesRef);
   const calc = calcNfMes(serieId, mesRef);
@@ -2512,16 +2512,16 @@ function emitirNfMensal(serieId, mesRef, dtEmissao){
     qtShows: calc.qtShows,
     status: 'emitida'
   };
-  save(); toast('✅ NF emitida! Recebimento em '+fmtD(addDays(dtEmissao,30))); render();
+   await save(); toast('✅ NF emitida! Recebimento em '+fmtD(addDays(dtEmissao,30))); render();
 }
 
-function marcarNfRecebida(key){
-  if(DB.nfMensal[key]) { DB.nfMensal[key].status='recebida'; save(); toast('✅ NF marcada como recebida!'); render(); }
+async function marcarNfRecebida(key){
+   if(DB.nfMensal[key]) { DB.nfMensal[key].status='recebida'; await save(); toast('✅ NF marcada como recebida!'); render(); }
 }
 
-function delNfMensal(key){
+async function delNfMensal(key){
   if(!confirm('Remover registro desta NF?')) return;
-  delete DB.nfMensal[key]; save(); render();
+   delete DB.nfMensal[key]; await save(); render();
 }
 
 function getMesesSerie(serieId){
