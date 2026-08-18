@@ -1563,7 +1563,7 @@ function toggleNovoMembro(prefix){
   if(el)el.style.display=el.style.display==='none'?'block':'none';
 }
 
-function salvarNovoMembroEscala(prefix){
+async function salvarNovoMembroEscala(prefix){
   const nome=$(('nm-'+prefix+'-nome')).value.trim();
   const val=+$(('nm-'+prefix+'-val')).value||0;
   if(!nome){toast('Informe o nome','err');return;}
@@ -1661,7 +1661,7 @@ function waEquipe(showId){
 /* ═══════ EQUIPE ════════════════════════════════ */
 function calcPMb(){const v=+$('mv').value||0,ref=+$('mref').value||0;if(v&&ref)$('mp').value=((v/ref)*100).toFixed(2);}
 function calcVMb(){const p=+$('mp').value||0,ref=+$('mref').value||0;if(p&&ref)$('mv').value=((p/100)*ref).toFixed(2);}
-function addMembro(){
+async function addMembro(){
   const nome=$('mn').value.trim();if(!nome){toast('Informe o nome','err');return;}
   const id=uid();
   DB.equipe[id]={id,nome,fn:$('mf').value,val:+$('mv').value||0,perc:+$('mp').value||0,ref:+$('mref').value||0,pro:+$('mpro').value||0,proP:+$('mproP').value||0,wa:$('mwa').value.trim()};
@@ -2067,7 +2067,7 @@ function parseVoz(txt){
   </div>`;
   $('voz-ok').style.display='block';
 }
-function salvarVoz(){
+async function salvarVoz(){
   if(!vozData)return;
    DB.shows[vozData.id]=vozData; await save();render();
   $('voz-txt').style.display='none';$('voz-prev').style.display='none';$('voz-ok').style.display='none';
