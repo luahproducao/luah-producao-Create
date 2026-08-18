@@ -763,15 +763,6 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <button class="itab"    onclick="sub('ec',this)">🧮 Calcular</button>
   </div>
   <div id="el">
-    <div id="calc-nota-box" style="display:none">
-      <div class="card gold-glass">
-        <div class="sl" style="margin-top:0">Calculadora por nota</div>
-        <div class="fg"><label>Valor bruto da nota (R$)</label>
-          <input id="cnota" type="number" placeholder="ex: 3000,00" inputmode="decimal" oninput="calcNota()">
-        </div>
-        <div id="cnota-res"></div>
-      </div>
-    </div>
     <div id="lista-eq"></div>
   </div>
   <div id="ea" style="display:none">
@@ -1055,6 +1046,71 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <button class="btn pri" onclick="salvarEditDiv()" style="margin-top:4px">Salvar alterações</button>
     <div class="sp"></div>
     <button class="btn ghost" onclick="fecharEditDiv()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL EDITAR SHOW -->
+<div id="modal-show" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(5,11,24,.88);backdrop-filter:blur(12px);align-items:flex-end;justify-content:center">
+  <div style="background:var(--s2);border:1px solid var(--line2);border-top-left-radius:20px;border-top-right-radius:20px;padding:22px 18px 36px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800">✏️ Editar show</div>
+      <button onclick="fecharModalShow()" style="background:var(--s3);border:1px solid var(--line2);border-radius:50%;width:30px;height:30px;color:var(--t2);font-size:16px;cursor:pointer;font-family:Inter;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+    <input type="hidden" id="edit-show-id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">
+      <div class="fg"><label>Nome / local</label><input id="es-nome"></div>
+      <div class="fg"><label>Data</label><input id="es-data" type="date"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">
+      <div class="fg"><label>Horário</label><input id="es-hora" type="time"></div>
+      <div class="fg"><label>Valor bruto (R$)</label><input id="es-valor" type="number" inputmode="decimal"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">
+      <div class="fg"><label>Prazo recebimento</label>
+        <select id="es-prazo"><option value="30">30 dias</option><option value="60">60 dias</option><option value="90">90 dias</option></select>
+      </div>
+      <div class="fg"><label>Tipo</label>
+        <select id="es-tipo"><option>Casamento</option><option>Corporativo</option><option>Festa particular</option><option>Show público</option><option>Formatura</option><option>Show semanal fixo</option><option>Outro</option></select>
+      </div>
+    </div>
+    <div class="fg"><label>Status</label>
+      <select id="es-status"><option value="agendado">📅 Agendado</option><option value="nf">📄 NF emitida</option><option value="recebido">✅ Recebido</option></select>
+    </div>
+    <div class="fg"><label>Obs</label><input id="es-obs" placeholder="endereço, contato..."></div>
+    <button class="btn pri" onclick="salvarEditShow()" style="margin-top:6px">Salvar alterações</button>
+    <div style="height:8px"></div>
+    <button class="btn ghost" onclick="fecharModalShow()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL EDITAR LANÇAMENTO -->
+<div id="modal-fin" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(5,11,24,.88);backdrop-filter:blur(12px);align-items:flex-end;justify-content:center">
+  <div style="background:var(--s2);border:1px solid var(--line2);border-top-left-radius:20px;border-top-right-radius:20px;padding:22px 18px 36px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800">✏️ Editar lançamento</div>
+      <button onclick="fecharModalFin()" style="background:var(--s3);border:1px solid var(--line2);border-radius:50%;width:30px;height:30px;color:var(--t2);font-size:16px;cursor:pointer;font-family:Inter;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+    <input type="hidden" id="edit-fin-id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">
+      <div class="fg"><label>Tipo</label>
+        <select id="ef-tipo"><option value="rec">Receita</option><option value="desp">Despesa empresa</option><option value="casa">Despesa casa</option></select>
+      </div>
+      <div class="fg"><label>Valor (R$)</label><input id="ef-valor" type="number" inputmode="decimal"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">
+      <div class="fg"><label>Descrição</label><input id="ef-desc"></div>
+      <div class="fg"><label>Data</label><input id="ef-data" type="date"></div>
+    </div>
+    <div class="fg"><label>Forma de pagamento</label>
+      <select id="ef-pgto" onchange="toggleEFParc()">
+        <option value="">Não informado</option><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option>
+        <option value="debito">Cartão de débito</option><option value="credito-vista">Crédito à vista</option><option value="credito-parcelado">Crédito parcelado</option>
+      </select>
+    </div>
+    <div class="fg" id="ef-parcg" style="display:none"><label>Parcelas</label><input id="ef-parc" type="number" min="2" max="48" inputmode="numeric"></div>
+    <button class="btn pri" onclick="salvarEditFin()" style="margin-top:6px">Salvar alterações</button>
+    <div style="height:8px"></div>
+    <button class="btn ghost" onclick="fecharModalFin()">Cancelar</button>
   </div>
 </div>
 
@@ -2299,6 +2355,46 @@ function renderConteudo(){
 }
 
 /* ═══════ RENDER ═════════════════════════════════ */
+/* ─── EDIÇÃO DE SHOW ────────────────────────────── */
+function abrirEditShow(id){
+  const sh=DB.shows[id];if(!sh)return;
+  $('edit-show-id').value=id;
+  $('es-nome').value=sh.nome||'';
+  $('es-data').value=sh.data||'';
+  $('es-hora').value=sh.hora||'20:00';
+  $('es-valor').value=sh.valor||0;
+  $('es-prazo').value=sh.prazo||30;
+  $('es-tipo').value=sh.tipo||'Outro';
+  $('es-status').value=sh.status||'agendado';
+  $('es-obs').value=sh.obs||'';
+  const m=$('modal-show');m.style.display='flex';
+  setTimeout(()=>m.addEventListener('click',function h(e){if(e.target===m){fecharModalShow();m.removeEventListener('click',h);}}),100);
+}
+function fecharModalShow(){$('modal-show').style.display='none';}
+async function salvarEditShow(){
+  const id=$('edit-show-id').value;if(!DB.shows[id])return;
+  const valor=+$('es-valor').value||0,data=$('es-data').value||today(),prazo=+$('es-prazo').value||30;
+  Object.assign(DB.shows[id],{nome:$('es-nome').value.trim(),data,hora:$('es-hora').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('es-tipo').value,status:$('es-status').value,obs:$('es-obs').value.trim(),recData:addDays(data,prazo),falta:!valor?['valor']:[]});
+  await save();fecharModalShow();toast('✅ Show atualizado');render();
+}
+
+/* ─── EDIÇÃO DE LANÇAMENTO ──────────────────────── */
+function abrirEditFin(id){
+  const f=DB.fin[id];if(!f)return;
+  $('edit-fin-id').value=id;$('ef-tipo').value=f.tipo||'desp';$('ef-valor').value=f.valor||0;$('ef-desc').value=f.desc||'';$('ef-data').value=f.data||today();$('ef-pgto').value=f.pgto||'';$('ef-parc').value=f.parc||'';
+  toggleEFParc();
+  const m=$('modal-fin');m.style.display='flex';
+  setTimeout(()=>m.addEventListener('click',function h(e){if(e.target===m){fecharModalFin();m.removeEventListener('click',h);}}),100);
+}
+function fecharModalFin(){$('modal-fin').style.display='none';}
+function toggleEFParc(){const fp=$('ef-pgto')?.value;const pg=$('ef-parcg');if(pg)pg.style.display=fp==='credito-parcelado'?'flex':'none';}
+async function salvarEditFin(){
+  const id=$('edit-fin-id').value;if(!DB.fin[id])return;
+  const pgto=$('ef-pgto').value,parc=pgto==='credito-parcelado'?(+$('ef-parc').value||2):null;
+  Object.assign(DB.fin[id],{tipo:$('ef-tipo').value,valor:+$('ef-valor').value||0,desc:$('ef-desc').value.trim(),data:$('ef-data').value||today(),pgto,parc,rec:classRec($('ef-desc').value)});
+  await save();fecharModalFin();toast('✅ Lançamento atualizado');render();
+}
+
 function render(){rDash();rShows();rSeries();rEq();rPags();rPagSel();rFin();rDivs();rEquip();renderRel();renderSaude();}
 
 function rDash(){
