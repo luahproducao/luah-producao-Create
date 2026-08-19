@@ -576,12 +576,15 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <div class="fg"><label>Chave de acesso JSONBin (API Key)</label>
         <input id="jb-key-input" type="text" placeholder="Cole sua API Key aqui" autocomplete="off" style="font-size:13px;letter-spacing:.5px">
       </div>
+      <div class="fg"><label>ID do banco (bin) — opcional, só para aparelhos adicionais</label>
+        <input id="jb-bin-input" type="text" placeholder="Cole o ID do banco criado no outro aparelho" autocomplete="off" style="font-size:13px;letter-spacing:.5px">
+      </div>
       <div id="jb-err" style="display:none;font-size:12px;color:var(--rose);margin-bottom:10px;text-align:center"></div>
       <button class="btn pri" id="jb-connect-btn" onclick="conectarJSONBin()" style="font-size:15px;padding:14px">Conectar e salvar dados</button>
       <div class="sp"></div>
       <button class="btn ghost" onclick="pularFbSetup()" style="font-size:13px">Usar sem sincronização por agora</button>
       <div style="margin-top:14px;font-size:11px;color:var(--t3);text-align:center;line-height:1.7">
-        No celular do marido: abra o link do Netlify,<br>entre com a senha e cole a <b>mesma API Key</b>.<br>Os dois veem os mesmos dados em tempo real.
+        Para conectar outro aparelho: abra este link, entre com a senha, cole a <b>mesma API Key</b> e também o <b>ID do banco</b> (mostrado ao conectar no 1º aparelho, ou em jsonbin.io → Bins).<br>Os dois veem os mesmos dados em tempo real.
       </div>
     </div>
   </div>
@@ -1264,162 +1267,233 @@ function sair(){
   location.reload();
 }
 
-async function atualizarApp(){
-  const btn=$('btn-refresh');
-  if(btn){btn.style.transform='rotate(720deg)';setTimeout(()=>{btn.style.transition='none';btn.style.transform='';setTimeout(()=>btn.style.transition='transform .5s',50);},500);}
-  const key=jbKey(),bin=jbBin();
-  if(!key||!bin){
-    toast('Recarregando o app…');setTimeout(()=>location.reload(true),700);return;
-  }
-  syncUI(false,'sincronizando…');
-  try{
-    const r=await fetch(`${JB_BASE}/b/${bin}/latest`,{headers:{'X-Master-Key':key}});
-    if(r.ok){
-      const j=await r.json();const d=j.record;
-      if(d&&typeof d==='object'){
-        DB={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{},...d};
-        saveLocal();render();
-      }
-      syncUI(true,'atualizado ✓ '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
-      toast('✅ Dados atualizados!');
-    }else{toast('Erro ao sincronizar','err');syncUI(false,'erro');}
-  }catch(e){toast('Sem conexão — dados locais','err');syncUI(false,'offline');}
-}
-
 /* ═══════════════════════════════════════════════════
-   STORAGE — JSONBin.io
-   Banco de dados gratuito, sem Firebase, sem 2FA.
-   API: https://api.jsonbin.io/v3/b/<BIN_ID>
-   Header: X-Master-Key: <API_KEY>
+   STORAGE — JSONBin.io (v2 robusta)
+   - Fila de gravação sequencial com retry (evita que exclusões se percam)
+   - Controlo de versão: nuvem nunca sobrescreve dados locais mais recentes
+   - O mesmo bin + chave em aparelhos diferentes = os mesmos dados
 ═══════════════════════════════════════════════════ */
 const JB_BASE = 'https://api.jsonbin.io/v3';
-
+const LU_STATE_KEY = 'luah-sync-state';
 function jbKey(){ return localStorage.getItem('luah_jb_key')||''; }
 function jbBin(){ return localStorage.getItem('luah_jb_bin')||''; }
 
+// Estado de sincronização persistente:
+// cloudVer : versão da nuvem no último sync bem-sucedido (qualquer direção)
+let LU = { cloudVer: 0 };
+try{ const st = JSON.parse(localStorage.getItem(LU_STATE_KEY)||'{}'); LU.cloudVer = st.cloudVer||0; }catch(e){}
+function persistLU(){ try{ localStorage.setItem(LU_STATE_KEY, JSON.stringify({cloudVer: LU.cloudVer})); }catch(e){} }
+
 function loadLocal(){
   try{
-    const s=localStorage.getItem(STORAGE_KEY);
+    const s = localStorage.getItem(STORAGE_KEY);
     if(s){
-      // Substituir completamente — não mesclar (evita itens deletados voltarem)
-      const parsed=JSON.parse(s);
-      DB={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{},...parsed};
+      const parsed = JSON.parse(s);
+      DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...parsed};
     }
   }catch(e){console.warn('loadLocal erro:',e);}
 }
-function saveLocal(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(DB));}catch(e){}}
+function saveLocal(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); }catch(e){} }
 
+// Enfileira um PUT e processa a fila sequencialmente com retry
+let _saving = false;
 async function save(){
-  saveLocal(); // sempre salva local como backup
-  const key=jbKey(),bin=jbBin();
-  if(!key||!bin){syncUI(false,'local');return;}
+  saveLocal();
+  const key = jbKey(), bin = jbBin();
+  if(!key || !bin){ syncUI(false,'local'); return; }
+  DB._queue = (DB._queue||[]).concat([{data: JSON.parse(JSON.stringify(DB)), id: Date.now()+'-'+Math.random().toString(36).slice(2,8)}]);
+  await drainQueue(key, bin);
+}
+async function drainQueue(key, bin){
+  if(_saving) return;
+  _saving = true;
   try{
-    const r=await fetch(`${JB_BASE}/b/${bin}`,{
-      method:'PUT',
-      headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Versioning':'false'},
-      body:JSON.stringify(DB)
-    });
-    if(r.ok){syncUI(true,'salvo '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));}
-    else{syncUI(false,'erro ao salvar');}
-  }catch(e){syncUI(false,'sem conexão');}
+    while((DB._queue||[]).length){
+      const op = DB._queue[0];
+      let ok = false;
+      for(let attempt = 0; attempt < 3; attempt++){
+        try{
+          const r = await fetch(`${JB_BASE}/b/${bin}`,{
+            method:'PUT',
+            headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Versioning':'false'},
+            body: JSON.stringify(op.data)
+          });
+          if(r.ok){ ok = true; break; }
+        }catch(e){}
+        await new Promise(rs=>setTimeout(rs, 1500*(attempt+1)));
+      }
+      if(ok){
+        DB._queue.shift();
+        // Atualizar cloudVer com a versão real da nuvem
+        try{
+          const rm = await fetch(`${JB_BASE}/b/${bin}?meta=true`,{headers:{'X-Master-Key':key,'X-Bin-Meta-Only':'true'}});
+          if(rm.ok){ const jm = await rm.json(); const v = jm.metadata?.version||0; if(v) LU.cloudVer = v; }
+        }catch(e){}
+        persistLU(); saveLocal();
+        syncUI(true,'salvo '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+      }else{
+        syncUI(false,'erro ao salvar — a reenviar…');
+        break; // mantém na fila; retenta no próximo save ou no polling
+      }
+    }
+  }finally{ _saving = false; }
+}
+function cleanQueue(){ if(DB._queue) delete DB._queue; }
+
+// Traz os dados da nuvem APENAS se não estiverem desatualizados face ao último push local
+async function pullFromCloud(){
+  const key = jbKey(), bin = jbBin();
+  if(!key || !bin) return false;
+  try{
+    const rm = await fetch(`${JB_BASE}/b/${bin}?meta=true`,{headers:{'X-Master-Key':key,'X-Bin-Meta-Only':'true'}});
+    if(!rm.ok) return false;
+    const jm = await rm.json();
+    const ver = jm.metadata?.version||0;
+    if(!ver || ver < LU.cloudVer) return false; // nuvem mais antiga: não aceitar
+    const r = await fetch(`${JB_BASE}/b/${bin}/latest`,{headers:{'X-Master-Key':key}});
+    if(!r.ok) return false;
+    const j = await r.json();
+    const d = j.record;
+    if(!d || typeof d !== 'object') return false;
+    // Substituir completamente — deletados não voltam
+    DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...d};
+    cleanQueue();
+    LU.cloudVer = ver;
+    persistLU();
+    saveLocal();
+    const m = $('eqmed'); if(m && DB.meta?.mediaShow) m.value = DB.meta.mediaShow;
+    render();
+    return true;
+  }catch(e){ return false; }
+}
+
+async function atualizarApp(){
+  const btn = $('btn-refresh');
+  if(btn){btn.style.transform='rotate(720deg)';setTimeout(()=>{btn.style.transition='none';btn.style.transform='';setTimeout(()=>btn.style.transition='transform .5s',50);},500);}
+  syncUI(false,'sincronizando…');
+  const pushed = await pullFromCloud();
+  if(pushed){ toast('✅ Dados atualizados!'); }
+  else { toast('A reenviar dados locais…','err'); syncUI(false,'reenviando'); }
 }
 
 async function carregarJB(){
-  const key=jbKey(),bin=jbBin();
-  if(!key||!bin){loadLocal();render();return;}
-  try{
-    const r=await fetch(`${JB_BASE}/b/${bin}/latest`,{
-      headers:{'X-Master-Key':key}
-    });
-    if(r.ok){
-      const j=await r.json();
-      const d=j.record;
-      if(d&&typeof d==='object'){
-        // Substituir completamente — garantir que deletados não voltem
-        DB={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{},...d};
-      }
-      saveLocal();
-      syncUI(true,'online ✓');
-    } else {
-      loadLocal();syncUI(false,'erro ao carregar');
-    }
-  }catch(e){loadLocal();syncUI(false,'sem conexão');}
-  const m=$('eqmed');if(m&&DB.meta?.mediaShow)m.value=DB.meta.mediaShow;
-  render();
-  // Sync a cada 20s — usa versão do JSONBin para detectar mudança real
+  const key = jbKey(), bin = jbBin();
+  if(!key || !bin){ loadLocal(); render(); return; }
+  // 1. Reenviar pendências locais (garante que exclusões recentes vão para a nuvem)
+  await drainQueue(key, bin);
+  // 2. Trazer da nuvem apenas se não estiver desatualizada
+  const pulled = await pullFromCloud();
+  if(!pulled){ loadLocal(); syncUI(false,'offline — dados locais'); render(); return; }
+  syncUI(true,'online ✓');
+  // 3. Polling a cada 20s
   clearInterval(_syncTimer);
-  let _lastVer='';
-  _syncTimer=setInterval(async()=>{
-    const key=jbKey(),bin=jbBin();if(!key||!bin)return;
+  _syncTimer = setInterval(async()=>{
+    const key = jbKey(), bin = jbBin(); if(!key || !bin) return;
+    await drainQueue(key, bin); // reenviar pendências primeiro
     try{
-      // Busca metadados primeiro (mais leve) para ver se versão mudou
-      const rm=await fetch(`${JB_BASE}/b/${bin}?meta=true`,{headers:{'X-Master-Key':key,'X-Bin-Meta-Only':'true'}});
-      if(!rm.ok)return;
-      const jm=await rm.json();
-      const ver=jm.metadata?.version||jm.version||'';
-      if(ver&&ver===_lastVer){
+      const rm = await fetch(`${JB_BASE}/b/${bin}?meta=true`,{headers:{'X-Master-Key':key,'X-Bin-Meta-Only':'true'}});
+      if(!rm.ok) return;
+      const jm = await rm.json();
+      const ver = jm.metadata?.version||0;
+      if(!ver || ver <= LU.cloudVer){
         syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
-        return; // nada mudou
+        return; // nada novo na nuvem
       }
-      // Versão mudou — buscar dados completos
-      const r=await fetch(`${JB_BASE}/b/${bin}/latest`,{headers:{'X-Master-Key':key}});
-      if(r.ok){
-        const j=await r.json();const d=j.record;
-        if(d&&typeof d==='object'){
-          DB={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{},...d};
-          saveLocal();render();
-        }
-        _lastVer=ver;
-        syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
-      }
+      const r = await fetch(`${JB_BASE}/b/${bin}/latest`,{headers:{'X-Master-Key':key}});
+      if(!r.ok) return;
+      const j = await r.json(); const d = j.record;
+      if(!d || typeof d !== 'object') return;
+      DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...d};
+      cleanQueue();
+      LU.cloudVer = ver;
+      persistLU();
+      saveLocal();
+      const m = $('eqmed'); if(m && DB.meta?.mediaShow) m.value = DB.meta.mediaShow;
+      render();
+      syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
     }catch(e){}
-  },20000);
+  }, 20000);
 }
 
 async function conectarJSONBin(){
-  const key=$('jb-key-input').value.trim();
-  const btn=$('jb-connect-btn');
-  const err=$('jb-err');
-  if(!key){err.textContent='Cole a API Key';err.style.display='block';return;}
-  btn.textContent='Conectando…';btn.disabled=true;
+  const key = $('jb-key-input').value.trim();
+  const binId = $('jb-bin-input') ? $('jb-bin-input').value.trim() : '';
+  const btn = $('jb-connect-btn');
+  const err = $('jb-err');
+  if(!key){ err.textContent='Cole a API Key'; err.style.display='block'; return; }
+  btn.textContent='Conectando…'; btn.disabled=true;
   try{
-    // Criar um bin novo com dados iniciais
-    const r=await fetch(`${JB_BASE}/b`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':'luah-producao','X-Bin-Private':'false'},
-      body:JSON.stringify(DB)
-    });
-    if(!r.ok){
-      const t=await r.text();
-      err.textContent='Chave inválida. Verifique e tente novamente.';
-      err.style.display='block';
-      btn.textContent='Conectar e salvar dados';btn.disabled=false;
-      return;
+    // Se o utilizador forneceu o ID de um bin existente (outro aparelho), reutilizá-lo
+    let newBin = false;
+    if(binId){
+      // Verificar que o bin existe e é acessível com esta chave
+      const chk = await fetch(`${JB_BASE}/b/${binId}/latest`,{headers:{'X-Master-Key':key}});
+      if(!chk.ok){
+        err.textContent='Não foi possível aceder a esse banco. Verifique a chave e o ID.';
+        err.style.display='block';
+        btn.textContent='Conectar e salvar dados'; btn.disabled=false;
+        return;
+      }
+    }else{
+      // Criar um bin novo com os dados atuais
+      const r = await fetch(`${JB_BASE}/b`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':'luah-producao','X-Bin-Private':'false'},
+        body: JSON.stringify(DB)
+      });
+      if(!r.ok){
+        err.textContent='Chave inválida. Verifique e tente novamente.';
+        err.style.display='block';
+        btn.textContent='Conectar e salvar dados'; btn.disabled=false;
+        return;
+      }
+      const j = await r.json();
+      const bid = j.metadata?.id||j.record?.id||j.id;
+      if(!bid){ err.textContent='Erro ao criar banco. Tente novamente.'; err.style.display='block'; btn.textContent='Conectar e salvar dados'; btn.disabled=false; return; }
+      localStorage.setItem('luah_jb_bin', bid);
+      newBin = true;
     }
-    const j=await r.json();
-    const binId=j.metadata?.id||j.record?.id||j.id;
-    if(!binId){err.textContent='Erro ao criar banco. Tente novamente.';err.style.display='block';btn.textContent='Conectar e salvar dados';btn.disabled=false;return;}
-    localStorage.setItem('luah_jb_key',key);
-    localStorage.setItem('luah_jb_bin',binId);
+    localStorage.setItem('luah_jb_key', key);
     $('fb-setup-view').style.display='none';
     localStorage.setItem('luah_logado','1');
+    LU.cloudVer = 0; // forçar leitura da nuvem para garantir os dados mais recentes
+    persistLU();
+    // Enviar os dados locais para a nuvem com retry automático
+    await save();
     syncUI(true,'conectado');
-    toast('✅ Banco criado! ID: '+binId);
+    toast(newBin ? '✅ Banco criado e conectado!' : '✅ Conectado ao banco existente!');
     render();
-    // Iniciar sync automático
+    // Polling automático
     clearInterval(_syncTimer);
-    _syncTimer=setInterval(async()=>{
-      try{const r2=await fetch(`${JB_BASE}/b/${binId}/latest`,{headers:{'X-Master-Key':key}});
-        if(r2.ok){const j2=await r2.json();const d=j2.record;
-          if(d&&JSON.stringify(d)!==JSON.stringify(DB)){Object.assign(DB,{shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}},d);saveLocal();render();}
+    _syncTimer = setInterval(async()=>{
+      const key = jbKey(), bin = jbBin(); if(!key || !bin) return;
+      await drainQueue(key, bin);
+      try{
+        const rm = await fetch(`${JB_BASE}/b/${bin}?meta=true`,{headers:{'X-Master-Key':key,'X-Bin-Meta-Only':'true'}});
+        if(!rm.ok) return;
+        const jm = await rm.json();
+        const ver = jm.metadata?.version||0;
+        if(!ver || ver <= LU.cloudVer){
           syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+          return;
         }
+        const r2 = await fetch(`${JB_BASE}/b/${bin}/latest`,{headers:{'X-Master-Key':key}});
+        if(!r2.ok) return;
+        const j2 = await r2.json(); const d = j2.record;
+        if(!d || typeof d !== 'object') return;
+        DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...d};
+        cleanQueue();
+        LU.cloudVer = ver;
+        persistLU();
+        saveLocal();
+        render();
+        syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
       }catch(e){}
-    },15000);
+    }, 20000);
   }catch(e){
     err.textContent='Erro de conexão. Verifique sua internet.';
     err.style.display='block';
-    btn.textContent='Conectar e salvar dados';btn.disabled=false;
+    btn.textContent='Conectar e salvar dados'; btn.disabled=false;
   }
 }
 
@@ -1427,12 +1501,11 @@ function pularFbSetup(){
   $('fb-setup-view').style.display='none';
   localStorage.setItem('luah_logado','1');
   syncUI(false,'modo local');
-  loadLocal();render();
+  loadLocal(); render();
 }
-
-function salvarFbUrl(){conectarJSONBin();}
-function initFB(){carregarJB();}
-function iniciarSync(){carregarJB();}
+function salvarFbUrl(){ conectarJSONBin(); }
+function initFB(){ carregarJB(); }
+function iniciarSync(){ carregarJB(); }
 
 /* ═══════ INIT ══════════════════════════════════ */
 window.addEventListener('load',()=>{
@@ -1464,6 +1537,7 @@ window.addEventListener('load',()=>{
   ['sd','fdt','mdt','pdt'].forEach(id=>{const e=$(id);if(e)e.value=today();});
   renderConteudo();
 });
+
 
 /* ═══════ NAV ═══════════════════════════════════ */
 const SUBS=['sa','ss','sna','sns','el','ea','ep','ec','fm','fma','fd','fs'];
@@ -2501,56 +2575,45 @@ function rDash(){
 function showItem(sh){
   const past=sh.data<today();
   const stColor={agendado:'var(--amber)',nf:'var(--sky)',recebido:'var(--teal)'}[sh.status]||'var(--t3)';
-  const stLabel={agendado:'📅 Agendado',nf:'📄 NF emitida',recebido:'✅ Recebido'}[sh.status]||sh.status;
+  const stLabel={agendado:'Agendado',nf:'NF emitida',recebido:'Recebido'}[sh.status]||sh.status;
+  const custoEq=sh.escalacao&&sh.escalacao.length?sh.escalacao.reduce((a,m)=>a+(m.val||0),0):0;
+  const saldo=+(sh.liq||0)-custoEq;
   return`<div style="background:var(--s2);border:1px solid var(--line);border-left:4px solid ${sh.serie?'var(--vio)':'var(--teal)'};border-radius:14px;padding:14px;margin-bottom:9px;${past?'opacity:.6':''}">
-
-    <!-- Topo: nome + status badge -->
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">
-      <div style="flex:1">
-        <div style="font-size:15px;font-weight:700;line-height:1.3">${sh.nome}</div>
-        <div style="font-size:12px;color:var(--t2);margin-top:3px">${fmtD(sh.data)}${sh.hora?' às '+sh.hora:''} · ${sh.tipo}${sh.serie?' <span style="color:var(--vio2)">· Série</span>':''}</div>
+    <!-- Topo: data + status + nome -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
+      <div style="width:44px;height:44px;border-radius:11px;background:${stColor}16;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ${stColor}33">
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:${stColor};line-height:1">${new Date(sh.data+'T12:00').getDate()}</div>
+        <div style="font-size:8px;font-weight:700;color:${stColor};text-transform:uppercase">${MS[new Date(sh.data+'T12:00').getMonth()]}</div>
       </div>
-      <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:${stColor}18;color:${stColor};border:1px solid ${stColor}44;white-space:nowrap">${stLabel}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sh.nome}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">${sh.hora||''} · ${sh.tipo}${sh.serie?' · Série':''}</div>
+      </div>
+      <span style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;background:${stColor}18;color:${stColor};border:1px solid ${stColor}44;white-space:nowrap">${stLabel}</span>
     </div>
-
-    <!-- Valores em grid -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;background:var(--s3);border-radius:10px;padding:11px;margin-bottom:11px">
+    <!-- Valores -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;background:var(--s3);border-radius:10px;padding:10px;margin-bottom:11px">
       <div style="text-align:center">
-        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Bruto</div>
-        <div style="font-size:14px;font-weight:800;color:var(--tx)">${sh.valor?fmt(sh.valor):'<span style="color:var(--amber)">—</span>'}</div>
-      </div>
-      <div style="text-align:center;border-left:1px solid var(--line);border-right:1px solid var(--line)">
-        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Líquido</div>
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:4px">Líquido</div>
         <div style="font-size:14px;font-weight:800;color:var(--teal)">${sh.liq?fmt(sh.liq):'—'}</div>
       </div>
+      <div style="text-align:center;border-left:1px solid var(--line);border-right:1px solid var(--line)">
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:4px">Equipe</div>
+        <div style="font-size:14px;font-weight:800;color:${custoEq>0?'var(--rose)':'var(--t3)'}">${custoEq?fmt(custoEq):'—'}</div>
+      </div>
       <div style="text-align:center">
-        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Recebimento</div>
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:4px">Receber em</div>
         <div style="font-size:12px;font-weight:700;color:var(--gold)">${sh.recData?fmtD(sh.recData):'—'}</div>
       </div>
     </div>
-
-    <!-- Botões de status rápido -->
-    <div style="display:flex;gap:5px;margin-bottom:9px;flex-wrap:wrap">
-      <button onclick="setStatus('${sh.id}','agendado')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid ${sh.status==='agendado'?'var(--amber)':'var(--line)'};background:${sh.status==='agendado'?'rgba(245,158,11,.15)':'transparent'};color:${sh.status==='agendado'?'var(--amber)':'var(--t3)'};font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">📅 Agendado</button>
-      <button onclick="setStatus('${sh.id}','nf')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid ${sh.status==='nf'?'var(--sky)':'var(--line)'};background:${sh.status==='nf'?'rgba(56,189,248,.15)':'transparent'};color:${sh.status==='nf'?'var(--sky)':'var(--t3)'};font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">📄 NF emitida</button>
-      <button onclick="setStatus('${sh.id}','recebido')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid ${sh.status==='recebido'?'var(--teal)':'var(--line)'};background:${sh.status==='recebido'?'rgba(34,211,160,.15)':'transparent'};color:${sh.status==='recebido'?'var(--teal)':'var(--t3)'};font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">✅ Recebido</button>
-    </div>
-
-    <!-- Escalação do show -->
-    ${sh.escalacao&&sh.escalacao.length?`<div style="margin-bottom:10px;background:var(--s3);border-radius:10px;padding:10px 12px">
-      <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">👥 Escalação (${sh.escalacao.length} membro${sh.escalacao.length!==1?'s':''})</div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px">
-        ${sh.escalacao.map(m=>`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(34,211,160,.1);color:var(--teal);border:1px solid rgba(34,211,160,.2)">${m.nome}${m.val?` · ${fmt(m.val)}`:''}</span>`).join('')}
-      </div>
-      ${sh.valor?`<div style="margin-top:7px;font-size:11px;color:var(--t3)">Total equipe: <b style="color:var(--rose)">${fmt(sh.escalacao.reduce((a,m)=>a+(m.val||0),0))}</b> · Saldo artista: <b style="color:var(--teal)">${fmt(+(sh.liq||0)-sh.escalacao.reduce((a,m)=>a+(m.val||0),0))}</b></div>`:''}
-    </div>`:''}
-
-    <!-- Ações secundárias -->
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-      <button onclick="abrirEditShow('${sh.id}')" style="background:rgba(56,189,248,.1);color:var(--sky);border:1px solid rgba(56,189,248,.25);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">✏️ Editar</button>
-      <button onclick="waEquipe('${sh.id}')" style="background:rgba(37,211,102,.1);color:#25d366;border:1px solid rgba(37,211,102,.25);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">📲 Equipe</button>
-      ${sh.serie?`<button onclick="cancelarOc('${sh.id}')" style="background:rgba(242,93,124,.1);color:var(--rose);border:1px solid rgba(242,93,124,.25);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">✖ Cancelar este</button>`:''}
-      <button onclick="delShow('${sh.id}')" style="background:rgba(242,93,124,.08);color:var(--rose);border:1px solid rgba(242,93,124,.2);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:Inter;margin-left:auto">🗑</button>
+    ${saldo!==0&&custoEq?`<div style="font-size:11px;color:var(--t2);margin-bottom:10px;text-align:center">Saldo do artista: <b style="color:${saldo>=0?'var(--teal)':'var(--rose)'}">${fmt(saldo)}</b></div>`:''}
+    ${sh.escalacao&&sh.escalacao.length?`<div style="font-size:10px;color:var(--t3);margin-bottom:10px">Escalação: ${sh.escalacao.map(x=>x.nome).join(' · ')}</div>`:''}
+    <!-- Ações compactas -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button onclick="abrirEditShow('${sh.id}')" style="flex:1;background:rgba(56,189,248,.1);color:var(--sky);border:1px solid rgba(56,189,248,.25);border-radius:8px;padding:8px 0;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">Editar</button>
+      <button onclick="waEquipe('${sh.id}')" style="flex:1;background:rgba(37,211,102,.1);color:#25d366;border:1px solid rgba(37,211,102,.25);border-radius:8px;padding:8px 0;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">WhatsApp</button>
+      ${sh.serie?`<button onclick="cancelarOc('${sh.id}')" style="flex:1;background:rgba(242,93,124,.1);color:var(--rose);border:1px solid rgba(242,93,124,.25);border-radius:8px;padding:8px 0;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">Cancelar</button>`:''}
+      <button onclick="delShow('${sh.id}')" style="background:rgba(242,93,124,.08);color:var(--rose);border:1px solid rgba(242,93,124,.2);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;font-family:Inter">🗑</button>
     </div>
   </div>`;
 }
@@ -2566,15 +2629,15 @@ function rShows(){
   const pendentes=fut.filter(s=>s.status!=='recebido').length;
   const resumo=fut.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
     <div style="background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:11px;text-align:center">
-      <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:5px">Próximos</div>
+      <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:5px">Shows</div>
       <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--vio2)">${fut.length}</div>
     </div>
     <div style="background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:11px;text-align:center">
-      <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:5px">A receber</div>
+      <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:5px">Entrada prevista</div>
       <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--teal)">${fmt(totalFut)}</div>
     </div>
     <div style="background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:11px;text-align:center">
-      <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:5px">Pendentes</div>
+      <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:5px">Por receber</div>
       <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--amber)">${pendentes}</div>
     </div>
   </div>`:'';
@@ -2605,7 +2668,7 @@ function calcNfMes(serieId, mesRef){
   return {qtShows: shows.length, valor, liq};
 }
 
-async function emitirNfMensal(serieId, mesRef, dtEmissao){
+async function emitirNfMensal(serieId, mesRef, dtEmissao, desc){
   if(!dtEmissao){ toast('Informe a data de emissão da NF','err'); return; }
   const key = nfKey(serieId, mesRef);
   const calc = calcNfMes(serieId, mesRef);
@@ -2618,9 +2681,31 @@ async function emitirNfMensal(serieId, mesRef, dtEmissao){
     valor: calc.valor,
     liq: calc.liq,
     qtShows: calc.qtShows,
-    status: 'emitida'
+    tipo: 'serie',
+    desc: (desc||'').trim()
   };
-   await save(); toast('✅ NF emitida! Recebimento em '+fmtD(addDays(dtEmissao,30))); render();
+   await save(); toast('✅ NF da série emitida! Recebimento em '+fmtD(addDays(dtEmissao,30))); render();
+}
+/* NF individual de UM show da série (mesma lógica, chave separada) */
+function nfShowKey(serieId, mesRef, showId){ return serieId+'_'+mesRef+'_'+showId; }
+async function emitirNfShow(serieId, mesRef, showId, dtEmissao, desc){
+  if(!dtEmissao){ toast('Informe a data de emissão da NF','err'); return; }
+  const s = DB.shows[showId];
+  if(!s){ toast('Show não encontrado','err'); return; }
+  const key = nfShowKey(serieId, mesRef, showId);
+  if(!DB.nfMensal) DB.nfMensal = {};
+  DB.nfMensal[key] = {
+    id: key, serieId, mesRef, showId,
+    dtEmissao,
+    dtRecebimento: addDays(dtEmissao, 30),
+    valor: s.valor||0,
+    liq: s.liq||0,
+    qtShows: 1,
+    nomeShow: s.nome,
+    tipo: 'show',
+    desc: (desc||'').trim()
+  };
+   await save(); toast('✅ NF individual emitida para "'+s.nome+'"'); render();
 }
 
 async function marcarNfRecebida(key){
@@ -2638,68 +2723,98 @@ function getMesesSerie(serieId){
   const meses = [...new Set(shows.map(s=>s.data.slice(0,7)))].sort();
   return meses;
 }
+function nfsEmitidasSerie(serieId, mesRef){
+  // NFs individuais já emitidas para esta série+mês
+  return arr(DB.nfMensal).filter(n=>n.serieId===serieId&&n.mesRef===mesRef);
+}
+function nfSerieEmitida(serieId, mesRef){
+  // A NF única da série para este mês
+  return DB.nfMensal ? DB.nfMensal[nfKey(serieId, mesRef)] : null;
+}
 
 function rSeries(){
   const e=$('lista-series');if(!e)return;
   if(!arr(DB.series).length){ e.innerHTML=`<p class="empty">Nenhuma série recorrente.</p>`; return; }
   e.innerHTML = arr(DB.series).map(r=>{
     const meses = getMesesSerie(r.id);
-    const nfCards = meses.map(mes=>{
+    const mesCards = meses.map(mes=>{
       const key = nfKey(r.id, mes);
-      const nf  = DB.nfMensal?.[key];
-      const calc= calcNfMes(r.id, mes);
-      const [y,m2] = mes.split('-');
-      const label = new Date(+y,+m2-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+      const nfSerie = DB.nfMensal?.[key];
+      const calc  = calcNfMes(r.id, mes);
+      const [y,m2] = mes.split('-').map(Number);
+      const label = new Date(y,m2-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
       const isPast = mes < today().slice(0,7);
       const isCurrent = mes === today().slice(0,7);
-      if(nf){
-        // NF já emitida
-        return `<div style="background:var(--s3);border:1px solid var(--line2);border-radius:var(--rs);padding:11px 13px;margin-bottom:7px">
+      const podeEmitir = isPast||isCurrent;
+      // Shows desta série no mês
+      const showsMes = arr(DB.shows).filter(s=>
+        s.serieId===r.id && s.status!=='cancelado' && s.data.startsWith(mes)
+      ).sort((a,b)=>a.data.localeCompare(b.data));
+      const nfsInd = arr(DB.nfMensal).filter(n=>n.serieId===r.id&&n.mesRef===mes&&n.showId);
+      const showRows = showsMes.map(sh=>{
+        const nfInd = nfsInd.find(n=>n.showId===sh.id);
+        return `<tr>
+          <td style="padding:7px 6px;border-bottom:1px solid var(--line);font-size:12px">${fmtD(sh.data)} · ${sh.nome}</td>
+          <td style="padding:7px 6px;border-bottom:1px solid var(--line);font-size:12px;font-weight:700;text-align:right;white-space:nowrap">${fmt(sh.valor)}<br><span style="font-size:10px;color:var(--teal);font-weight:400">${fmt(sh.liq)} líq.</span></td>
+          <td style="padding:7px 6px;border-bottom:1px solid var(--line);text-align:right">${
+            nfInd
+              ? `<span class="bdg b" style="font-size:9px">NF ${fmtD(nfInd.dtEmissao)}</span>`
+              : podeEmitir
+                ? `<button class="btn sm on" style="font-size:10px;padding:4px 9px" onclick="abrirNfShow('${r.id}','${mes}','${sh.id}')">+ NF</button>`
+                : `<span style="font-size:10px;color:var(--t3)">futuro</span>`
+          }</td>
+        </tr>`;
+      }).join('');
+      // Card do mês
+      let nfBloco='';
+      if(nfSerie){
+        nfBloco=`<div style="background:rgba(34,211,160,.06);border:1px solid rgba(34,211,160,.25);border-radius:var(--rs);padding:11px 13px;margin-top:9px">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
             <div>
-              <div style="font-size:13px;font-weight:700;text-transform:capitalize">${label}</div>
-              <div style="font-size:11px;color:var(--t3);margin-top:2px">${calc.qtShows} shows · ${fmt(calc.liq)} líquido</div>
+              <div style="font-size:12px;font-weight:700">📄 NF ÚNICA da série</div>
+              <div style="font-size:11px;color:var(--t3);margin-top:2px">Soma os ${calc.qtShows} shows do mês · ${fmt(calc.liq)} líquido</div>
+              ${nfSerie.desc?`<div style="font-size:11px;color:var(--vio2);margin-top:3px">${nfSerie.desc}</div>`:''}
             </div>
-            <span class="bdg ${nf.status==='recebida'?'g':'b'}">${nf.status==='recebida'?'✅ Recebida':'📄 NF Emitida'}</span>
+            <span class="bdg ${nfSerie.status==='recebida'?'g':'b'}">${nfSerie.status==='recebida'?'Recebida':'Emitida'}</span>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:var(--t3);margin-bottom:10px">
-            <div>NF emitida em<br><b style="font-size:13px;color:var(--tx)">${fmtD(nf.dtEmissao)}</b></div>
-            <div>Recebimento previsto<br><b style="font-size:13px;color:${nf.status==='recebida'?'var(--teal)':'var(--gold)'}">${fmtD(nf.dtRecebimento)}</b></div>
+            <div>Emitida em<br><b style="font-size:13px;color:var(--tx)">${fmtD(nfSerie.dtEmissao)}</b></div>
+            <div>Recebimento previsto<br><b style="font-size:13px;color:${nfSerie.status==='recebida'?'var(--teal)':'var(--gold)'}">${fmtD(nfSerie.dtRecebimento)}</b></div>
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            ${nf.status!=='recebida'?`<button class="btn sm g" onclick="marcarNfRecebida('${key}')">✅ Marcar recebida</button>`:''}
+            ${nfSerie.status!=='recebida'?`<button class="btn sm g" onclick="marcarNfRecebida('${key}')">Marcar recebida</button>`:''}
             <button class="btn sm del" onclick="delNfMensal('${key}')">Remover</button>
           </div>
         </div>`;
-      } else if(isPast||isCurrent){
-        // Mês passado ou atual sem NF — mostrar campo para emitir
-        return `<div style="background:rgba(124,92,252,.06);border:1px dashed rgba(124,92,252,.3);border-radius:var(--rs);padding:11px 13px;margin-bottom:7px">
+      } else if(podeEmitir){
+        nfBloco=`<div style="background:rgba(124,92,252,.06);border:1px dashed rgba(124,92,252,.3);border-radius:var(--rs);padding:11px 13px;margin-top:9px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
-            <div>
-              <div style="font-size:13px;font-weight:700;text-transform:capitalize">${label}</div>
-              <div style="font-size:11px;color:var(--t3);margin-top:2px">${calc.qtShows} shows · ${fmt(calc.valor)} bruto · ${fmt(calc.liq)} líquido</div>
-            </div>
-            <span class="bdg a">⏳ NF pendente</span>
+            <div style="font-size:12px;font-weight:700;color:var(--vio2)">📄 NF ÚNICA da série (todos os shows juntos)</div>
+            <span class="bdg a" style="font-size:9px">Pendente</span>
           </div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:9px">${calc.qtShows} shows · ${fmt(calc.valor)} bruto · ${fmt(calc.liq)} líquido</div>
           <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
-            <div class="fg" style="flex:1;margin-bottom:0">
-              <label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Data de emissão da NF</label>
-              <input type="date" id="nf-dt-${key}" style="font-size:13px;padding:8px 10px">
+            <div class="fg" style="flex:1;margin-bottom:0;min-width:120px">
+              <label style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Quando lançar a nota</label>
+              <input type="date" id="nf-dt-${key}" style="font-size:12px;padding:7px 9px">
             </div>
-            <button class="btn sm on" style="margin-top:15px;white-space:nowrap" onclick="emitirNfMensal('${r.id}','${mes}',$('nf-dt-${key}').value)">Emitir NF</button>
-          </div>
-        </div>`;
-      } else {
-        // Mês futuro — apenas informativo
-        return `<div style="background:var(--s3);border:1px solid var(--line);border-radius:var(--rs);padding:10px 13px;margin-bottom:7px;opacity:.6">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="font-size:13px;font-weight:600;text-transform:capitalize">${label}</div>
-            <span style="font-size:11px;color:var(--t3)">${calc.qtShows} shows previstos · ${fmt(calc.liq)} líq.</span>
+            <div class="fg" style="flex:1;margin-bottom:0;min-width:120px">
+              <label style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Descrição (opcional)</label>
+              <input type="text" id="nf-ds-${key}" placeholder="ex: NF julho IberoStar" style="font-size:12px;padding:7px 9px">
+            </div>
+            <button class="btn sm on" style="white-space:nowrap" onclick="emitirNfMensal('${r.id}','${mes}',$('nf-dt-${key}').value,$('nf-ds-${key}')?.value)">Emitir NF da série</button>
           </div>
         </div>`;
       }
+      return `<div style="background:var(--s3);border:1px solid var(--line);border-radius:var(--rs);padding:11px 13px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:13px;font-weight:700;text-transform:capitalize">${label}</div>
+          <span style="font-size:11px;color:var(--t3)">${showRows?showsMes.length+' shows':'sem shows'} · ${fmt(calc.liq)} líq.</span>
+        </div>
+        ${showRows?`<table style="width:100%;border-collapse:collapse;font-size:12px">${showRows}</table>`:'<div style="font-size:12px;color:var(--t3);padding:6px 0">Nenhum show neste mês.</div>'}
+        ${nfBloco}
+      </div>`;
     }).join('');
-
     return `<div class="item iv" style="padding:14px 15px">
       <div class="ih" style="margin-bottom:11px">
         <div>
@@ -2708,30 +2823,68 @@ function rSeries(){
         </div>
         <button class="btn sm del" onclick="delSerie('${r.id}')">×</button>
       </div>
-      <div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📄 Notas fiscais mensais</div>
-      ${meses.length ? nfCards : '<p style="font-size:12px;color:var(--t3)">Nenhum show gerado ainda.</p>'}
+      <div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Notas fiscais mensais</div>
+      ${meses.length ? mesCards : '<p style="font-size:12px;color:var(--t3)">Nenhum show gerado ainda.</p>'}
     </div>`;
   }).join('');
 }
-function rEq(){
+/* Emissão de NF individual de um show da série */
+async function abrirNfShow(serieId, mesRef, showId){
+  const s = DB.shows[showId];
+  const dtDefault = addDays(s.data, 7);
+  const dt = prompt('Data de emissão da NF (AAAA-MM-DD):', dtDefault);
+  if(!dt) return;
+  let desc = null;
+  try{ desc = prompt('Descrição do lançamento (opcional):', 'NF individual — '+s.nome); }catch(e){}
+  await emitirNfShow(serieId, mesRef, showId, dt, desc||'');
+}function rEq(){
   const e=$('lista-eq');if(!e)return;
   const eq=arr(DB.equipe);
   const tP=eq.reduce((a,m)=>a+(m.perc||0),0);
   const info=tP>0?`<div class="notice ${tP>100?'err':'ok'}" style="margin-bottom:9px">${tP>100?'⚠️ Total alocado '+tP.toFixed(1)+'% — passa de 100%':'✅ Alocado: '+tP.toFixed(1)+'% · Saldo artista: '+(100-tP).toFixed(1)+'%'}</div>`:'';
-  e.innerHTML=info+(eq.length?eq.map(m=>`
-    <div class="item ig">
+  // Pagamentos por membro e por show
+  const pagsPorMembro=(mbId)=>arr(DB.pags).filter(p=>p.mbId===mbId);
+  const porShow=(mbId)=>{
+    const ps=pagsPorMembro(mbId);
+    // Agrupar por show (showRef)
+    const grp={};
+    ps.forEach(p=>{
+      const k=p.showRef||'avulso';
+      if(!grp[k]) grp[k]={nome:p.showNome||(k==='avulso'?'Pagamento avulso':'?'),total:0,pags:0};
+      grp[k].total+=p.val; grp[k].pags++;
+    });
+    return Object.entries(grp).map(([k,g])=>({...g,id:k}));
+  };
+  e.innerHTML=info+(eq.length?eq.map(m=>{
+    const ps=porShow(m.id);
+    const totalMembro=ps.reduce((a,g)=>a+g.total,0);
+    return `<div class="item ig">
       <div class="ih">
         <div style="flex:1"><div class="iname">${m.nome} <span class="bdg v" style="font-size:9px">${m.fn}</span></div>
           <div class="imeta" style="line-height:1.9;margin-top:4px">
             ${m.val>0?`Por show: <b style="color:var(--tx)">${fmt(m.val)}</b>${m.perc>0?` <span style="color:var(--vio)">(${m.perc.toFixed(1)}%)</span>`:''}`:''} 
-            ${m.pro>0?`<br>Pró-labore: <b style="color:var(--tx)">${fmt(m.pro)}</b>${m.proP>0?` <span style="color:var(--sky)">(${m.proP.toFixed(1)}%)</span>`:''}`:''}</div>
+            ${m.pro>0?`<br>Pró-labore: <b style="color:var(--tx)">${fmt(m.pro)}</b>${m.proP>0?` <span style="color:var(--sky)">(${m.proP.toFixed(1)}%)</span>`:''}`:''}
+          </div>
+          ${ps.length?`
+          <div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px;margin:8px 0 5px">Recebido por show</div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            ${ps.map(g=>`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--s3);border-radius:8px;padding:7px 11px">
+              <div style="font-size:12px;color:var(--t2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.nome} <span style="font-size:10px;color:var(--t3)">${g.pags} pag(s)</span></div>
+              <div style="font-size:13px;font-weight:700;color:var(--teal);flex-shrink:0;margin-left:8px">+${fmt(g.total)}</div>
+            </div>`).join('')}
+            <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--line);padding-top:6px;margin-top:2px">
+              <span style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase">Total</span>
+              <span style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--teal)">+${fmt(totalMembro)}</span>
+            </div>
+          </div>`:`<div style="font-size:11px;color:var(--t3);margin-top:6px">Nenhum pagamento registrado.</div>`}
         </div>
         <div style="display:flex;gap:6px;align-items:flex-start">
           ${m.wa?`<a href="https://wa.me/55${m.wa.replace(/\D/g,'')}?text=Olá+${encodeURIComponent(m.nome)}!" class="btn wa" style="text-decoration:none" target="_blank">📲</a>`:''}
           <button class="btn sm del" onclick="delMembro('${m.id}')">×</button>
         </div>
       </div>
-    </div>`).join(''):`<p class="empty">Nenhum membro cadastrado.</p>`);
+    </div>`;
+  }).join(''):`<p class="empty">Nenhum membro cadastrado.</p>`);
 }
 function rPags(){
   const e=$('lista-pag');if(!e)return;
@@ -2755,8 +2908,38 @@ function rPagSel(){
   const shows=arr(DB.shows).filter(sh=>sh.status!=='cancelado').sort((a,b)=>b.data.localeCompare(a.data)).slice(0,30);
   ps.innerHTML='<option value="">— nenhum —</option>'+shows.map(sh=>`<option value="${sh.id}">${fmtD(sh.data)} · ${sh.nome}</option>`).join('');
 }
+/* ─── PREVISÃO MENSAL (mês a mês) ──────────────── */
+function rPrevisao(){
+  const hoje=new Date();
+  const ano0=hoje.getFullYear(), mes0=hoje.getMonth();
+  const rows=[];
+  for(let i=1;i<=4;i++){
+    let mm=mes0+i, yy=ano0;
+    if(mm>11){mm-=12;yy++;}
+    const yyyymm=yy+'-'+String(mm+1).padStart(2,'0');
+    // Shows futuros neste mês (agendados ou NF emitida, ainda não recebidos)
+    const showsMes=arr(DB.shows).filter(s=>s.data.startsWith(yyyymm)&&s.status!=='cancelado'&&s.status!=='recebido'&&s.valor);
+    const showValor=showsMes.reduce((a,b)=>a+(b.liq||0),0);
+    const showBruto=showsMes.reduce((a,b)=>a+(b.valor||0),0);
+    // Receitas fixas/variáveis de empresa neste mês
+    const finsMes=arr(DB.fin).filter(f=>f.data.startsWith(yyyymm));
+    const recMes=finsMes.filter(f=>f.tipo==='rec').reduce((a,b)=>a+b.valor,0);
+    // Despesas fixas recorrentes (casa) deste mês de referência
+    const despesaMes=finsMes.filter(f=>f.tipo!=='rec').reduce((a,b)=>a+b.valor,0);
+    const total=showValor+recMes-despesaMes;
+    rows.push({mes:MS[mm]+' '+yy, yyyymm, showValor, showBruto, recMes, despesaMes, total, nShows:showsMes.length});
+  }
+  return rows.map(r=>`<div style="background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:120px;flex:1">
+      <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px">${r.mes}${r.nShows?`<span style="color:var(--t3);display:block;font-weight:400;margin-top:2px">${r.nShows} show(s)</span>`:''}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:${r.total>=0?'var(--teal)':'var(--rose)'}">${fmt(r.total)}</div>
+      <div style="font-size:10px;color:var(--t3);margin-top:5px;line-height:1.6">
+        +${fmt(r.showValor+ r.recMes)} entradas<br>−${fmt(r.despesaMes)} saídas
+      </div>
+    </div>`).join('');
+}
 function rFin(){
   const e=$('lista-fin');if(!e)return;
+  const previsao=`<div class="sl">Previsão dos próximos meses</div><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">${rPrevisao()}</div>`;
   const s=arr(DB.fin).sort((a,b)=>b.data.localeCompare(a.data));
   if(!s.length){e.innerHTML=`<div class="empty"><div style="font-size:28px;margin-bottom:8px">💰</div>Nenhum lançamento.<br>Use o campo acima ou o botão <b>+ Lançar</b>.</div>`;return;}
 
@@ -2826,7 +3009,7 @@ function rFin(){
     ${lista.slice(0,25).map(row).join('')}
   `:'';
 
-  e.innerHTML=resumo+bloco(rec,'💰 Receitas','var(--teal)')+bloco(fix,'🔒 Fixos','var(--rose)')+bloco(vri,'📊 Variáveis','var(--amber)');
+  e.innerHTML=previsao+resumo+bloco(rec,'💰 Receitas','var(--teal)')+bloco(fix,'🔒 Fixos','var(--rose)')+bloco(vri,'📊 Variáveis','var(--amber)');
 }
 function rDivs(){
   ['empresa','casa'].forEach(cat=>{
