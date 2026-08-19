@@ -3268,14 +3268,14 @@ function rDash(){
     const dO=new Date(s.data+'T12:00');
     return`<div class="ag" style="${s.data<today()?'opacity:.55':''}">
       <div class="ag-d"><div class="ag-n" style="color:${s.serie?'var(--vio)':'var(--teal)'}">${dO.getDate()}</div><div class="ag-w">${D[dO.getDay()].slice(0,3)}</div></div>
-      <div style="flex:1"><div class="iname">${s.nome}</div><div class="imeta">${s.hora?s.hora+' · ':''}${s.local?s.local+' · ':''}${s.tipo}${s.valor?' · '+fmt(s.valor):'<span style="color:var(--amber)"> · valor pendente</span>'}</div></div>
+      <div style="flex:1"><div class="iname">${s.nome}</div><div class="imeta">${s.hora?s.hora+' · ':''}${s.local?s.local+' · ':''}${s.tipo}${s.valor?' · '+fmt(s.valor):'<span style="color:var(--amber)"> · valor pendente</span>'}</div>${escList(s).length?`<div style="font-size:10px;color:var(--gold);margin-top:3px;font-weight:600">Equipe: ${escList(s).map(x=>x.nome).join(' · ')}</div>`:''}</div>
       <span class="bdg ${s.status==='recebido'?'g':s.status==='nf'?'b':'a'}">${s.status==='nf'?'NF':s.status}</span>
     </div>`;}).join(''):`<p class="empty">Nenhum show em ${M[mes]}.</p>`);
   // Próximos
   const prox=arr(DB.shows).filter(s=>s.status!=='recebido'&&s.status!=='cancelado'&&s.data>=today()).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,4);
   set('d-prox',prox.length?prox.map(s=>`
     <div class="item ${s.serie?'iv':'ib'}">
-      <div class="ih"><div><div class="iname">${s.nome}</div><div class="imeta">${fmtD(s.data)} ${s.hora?'às '+s.hora:''} · ${s.tipo}</div></div>
+      <div class="ih"><div><div class="iname">${s.nome}</div><div class="imeta">${fmtD(s.data)} ${s.hora?'às '+s.hora:''} · ${s.tipo}</div>${escList(s).length?`<div style="font-size:10px;color:var(--gold);margin-top:3px;font-weight:600">Equipe: ${escList(s).map(x=>x.nome).join(' · ')}</div>`:''}</div>
       <span class="bdg ${s.serie?'v':'b'}">${s.serie?'Série':'Único'}</span></div>
       <div class="sg"><div>Bruto<b>${s.valor?fmt(s.valor):'—'}</b></div><div>Líquido<b style="color:var(--teal)">${s.liq?fmt(s.liq):'—'}</b></div><div>Recebimento<b>${fmtD(s.recData)}</b></div></div>
     </div>`).join(''):`<p class="empty">Nenhum show próximo.</p>`);
