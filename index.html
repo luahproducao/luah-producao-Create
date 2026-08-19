@@ -532,10 +532,15 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <div class="fg"><label>Chave de acesso JSONBin (API Key)</label>
         <input id="jb-key-input" type="text" placeholder="Cole sua API Key aqui" autocomplete="off" style="font-size:13px;letter-spacing:.5px">
       </div>
-      <div class="fg"><label>ID do banco (bin) — opcional, só para aparelhos adicionais</label>
-        <input id="jb-bin-input" type="text" placeholder="Cole o ID do banco criado no outro aparelho" autocomplete="off" style="font-size:13px;letter-spacing:.5px">
+      <div class="fg"><label>ID do banco (bin)</label>
+        <input id="jb-bin-input" type="text" placeholder="Cole o ID do banco (aparelho com os dados)" autocomplete="off" style="font-size:13px;letter-spacing:.5px">
       </div>
       <div id="jb-err" style="display:none;font-size:12px;color:var(--rose);margin-bottom:10px;text-align:center"></div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button type="button" id="btn-setup-criar" class="btn pri" style="flex:1;font-size:13px;padding:12px" onclick="modoSetup('criar')">Criar banco novo</button>
+        <button type="button" id="btn-setup-usar" class="btn" style="flex:1;font-size:13px;padding:12px;background:rgba(200,180,120,.1);color:var(--gold2);border:1px solid rgba(200,180,120,.3)" onclick="modoSetup('usar')">Já tenho um banco</button>
+      </div>
+      <div id="setup-aviso-usar" style="display:none;font-size:12px;color:var(--vio2);background:rgba(217,192,136,.08);border:1px solid rgba(200,180,120,.25);border-radius:var(--rs);padding:10px 12px;margin-bottom:14px;line-height:1.6">Insira a <b>mesma API Key</b> e o <b>ID do banco</b> do primeiro aparelho (Mostre o ID em Mais → Conexão no aparelho com os dados).</div>
       <button class="btn pri" id="jb-connect-btn" onclick="conectarJSONBin()" style="font-size:15px;padding:14px">Conectar e salvar dados</button>
       <div class="sp"></div>
       <button class="btn ghost" onclick="pularFbSetup()" style="font-size:13px">Usar sem sincronização por agora</button>
@@ -1036,6 +1041,36 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <select id="es-status"><option value="agendado">Agendado</option><option value="nf"> NF emitida</option><option value="recebido">Recebido</option></select>
     </div>
     <div class="fg"><label>Obs</label><input id="es-obs" placeholder="endereço, contato..."></div>
+    <!-- ESCALAÇÃO DO SHOW (edição) -->
+    <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Escalação do show</div>
+        <button type="button" onclick="toggleNovoMembro('es')" style="font-size:11px;background:rgba(200,180,120,.12);color:var(--vio2);border:1px solid rgba(200,180,120,.28);border-radius:20px;padding:4px 11px;cursor:pointer;font-family:Inter;font-weight:700">+ Novo membro</button>
+      </div>
+      <div id="escala-es" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+      <div id="novo-mb-es" style="display:none;background:var(--s3);border:1px solid rgba(200,180,120,.2);border-radius:var(--rs);padding:12px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--vio2);margin-bottom:9px">Cadastrar membro rapidamente</div>
+        <div class="r2">
+          <div class="fg"><label>Nome</label><input id="nm-es-nome" placeholder="ex: João Brito"></div>
+          <div class="fg"><label>Função</label>
+            <select id="nm-es-fn">
+              <optgroup label="Músicos"><option>Guitarra</option><option>Baixo</option><option>Bateria</option><option>Percussão</option><option>Teclado</option><option>Violão</option><option>Saxofone</option><option>Trompete</option><option>Backing vocal</option><option>Vocalista</option></optgroup>
+              <optgroup label="Técnicos"><option>Técnico de som (FOH)</option><option>Road / carregador</option><option>Iluminação</option><option>DJ</option><option>Motorista</option></optgroup>
+              <optgroup label="Outros"><option>Outro</option></optgroup>
+            </select>
+          </div>
+        </div>
+        <div class="r2">
+          <div class="fg"><label>Valor por show (R$)</label><input id="nm-es-val" type="number" placeholder="0,00" inputmode="decimal"></div>
+          <div class="fg"><label>WhatsApp (DDD)</label><input id="nm-es-wa" type="tel" placeholder="71999999999"></div>
+        </div>
+        <div style="display:flex;gap:7px">
+          <button type="button" onclick="salvarNovoMembroEscala('es')" class="btn pri" style="flex:1;font-size:13px;padding:10px">Salvar e incluir</button>
+          <button type="button" onclick="toggleNovoMembro('es')" class="btn ghost" style="font-size:13px;padding:10px">Cancelar</button>
+        </div>
+      </div>
+      <div id="escala-es-preview" style="display:none;background:var(--s3);border-radius:var(--rs);padding:10px 12px;font-size:12px;color:var(--t2)"></div>
+    </div>
     <button class="btn pri" onclick="salvarEditShow()" style="margin-top:6px">Salvar alterações</button>
     <div style="height:8px"></div>
     <button class="btn ghost" onclick="fecharModalShow()">Cancelar</button>
@@ -1122,6 +1157,16 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <button onclick="goFromMore('dig')" style="background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
       <div style="font-size:18px;margin-bottom:6px"></div>
       <div style="font-size:13px;font-weight:600">Conteúdo</div>
+    </button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+    <button onclick="goFromMore('conexao')" style="background:var(--s2);border:1px solid rgba(200,180,120,.25);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
+      <div style="font-size:18px;margin-bottom:6px"></div>
+      <div style="font-size:13px;font-weight:600">Conexão</div>
+    </button>
+    <button onclick="syncAgora()" style="background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
+      <div style="font-size:18px;margin-bottom:6px"></div>
+      <div style="font-size:13px;font-weight:600">Sincronizar agora</div>
     </button>
   </div>
   <button onclick="closeMore()" style="margin-top:12px;width:100%;background:transparent;border:1px solid var(--line);border-radius:var(--rs);padding:10px;color:var(--t3);font-size:13px;cursor:pointer;font-family:Inter">Fechar</button>
@@ -1305,9 +1350,14 @@ async function pullFromCloud(){
     if(!rm.ok) return false;
     const jm = await rm.json();
     const ver = jm.metadata?.version||0;
-    if(!ver || ver < LU.cloudVer) return false; // nuvem mais antiga: não aceitar
+    if(ver < LU.cloudVer) return false; // nuvem mais antiga: não aceitar
     const r = await fetch(`${JB_BASE}/b/${bin}/latest`,{headers:{'X-Master-Key':key}});
-    if(!r.ok) return false;
+    if(!r.ok){
+      // 404 = bin criado mas vazio: aceitar o estado vazio para que o aparelho
+      // com dados locais os envie (cenário 2.º aparelho sem dados)
+      if(r.status === 404){ DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...DB}; cleanQueue(); LU.cloudVer = ver; persistLU(); saveLocal(); return 'vazio'; }
+      return false;
+    }
     const j = await r.json();
     const d = j.record;
     if(!d || typeof d !== 'object') return false;
@@ -1328,18 +1378,28 @@ async function atualizarApp(){
   if(btn){btn.style.transform='rotate(720deg)';setTimeout(()=>{btn.style.transition='none';btn.style.transform='';setTimeout(()=>btn.style.transition='transform .5s',50);},500);}
   syncUI(false,'sincronizando…');
   const pushed = await pullFromCloud();
-  if(pushed){ toast('Dados atualizados!'); }
+  if(pushed){ toast(pushed==='vazio' && (Object.keys(DB.shows||{}).length||Object.keys(DB.fin||{}).length) ? 'A enviar dados deste aparelho…' : 'Dados atualizados!'); }
   else { toast('A reenviar dados locais…','err'); syncUI(false,'reenviando'); }
+  if(pushed==='vazio' && (Object.keys(DB.shows||{}).length||Object.keys(DB.fin||{}).length)){ await save(); toast('Dados deste aparelho enviados à nuvem'); }
 }
 
 async function carregarJB(){
   const key = jbKey(), bin = jbBin();
   if(!key || !bin){ loadLocal(); render(); return; }
+  // 0. Garantir dados locais em memória (no reload o DB começa vazio)
+  if(!Object.keys(DB.shows||{}).length && !Object.keys(DB.fin||{}).length){ loadLocal(); }
   // 1. Reenviar pendências locais (garante que exclusões recentes vão para a nuvem)
   await drainQueue(key, bin);
   // 2. Trazer da nuvem apenas se não estiver desatualizada
   const pulled = await pullFromCloud();
   if(!pulled){ loadLocal(); syncUI(false,'offline — dados locais'); render(); return; }
+  // 3. Nuvem vazia (criada mas sem dados) + dados locais existentes: enviar os dados locais
+  const temLocal = !!(DB.shows && Object.keys(DB.shows).length) || !!(DB.fin && Object.keys(DB.fin).length);
+  const nuvemVazia = (pulled === 'vazio') || (!Object.keys(DB.shows||{}).length && !Object.keys(DB.fin||{}).length && !Object.keys(DB.equipe||{}).length);
+  if(nuvemVazia && temLocal){
+    await save();
+    toast('Dados deste aparelho enviados à nuvem');
+  }
   syncUI(true,'online ');
   // 3. Polling a cada 20s
   clearInterval(_syncTimer);
@@ -1417,7 +1477,8 @@ async function conectarJSONBin(){
     // Enviar os dados locais para a nuvem com retry automático
     await save();
     syncUI(true,'conectado');
-    toast(newBin ? 'Banco criado e conectado!' : 'Conectado ao banco existente!');
+    const binMostrado = jbBin().slice(0,6)+'…'+jbBin().slice(-4);
+    toast((newBin ? 'Banco criado e conectado!' : 'Conectado ao banco existente!')+' Bin: '+binMostrado);
     render();
     // Polling automático
     clearInterval(_syncTimer);
@@ -1458,6 +1519,17 @@ function pularFbSetup(){
   localStorage.setItem('luah_logado','1');
   syncUI(false,'modo local');
   loadLocal(); render();
+}
+function modoSetup(modo){
+  const aviso=$('setup-aviso-usar');
+  if(modo==='usar'){
+    aviso.style.display='block';
+    $('jb-bin-input').placeholder='Cole o ID do banco (Mostre o ID em Mais → Conexão no outro aparelho)';
+    $('jb-bin-input').focus();
+  }else{
+    aviso.style.display='none';
+    $('jb-bin-input').placeholder='Em branco = criar banco novo com estes dados';
+  }
 }
 function salvarFbUrl(){ conectarJSONBin(); }
 function initFB(){ carregarJB(); }
@@ -1545,12 +1617,12 @@ async function qaAdd(){
 /* ═══════ SHOWS ═════════════════════════════════ */
 /* ── ESCALAÇÃO ──────────────────────────────────── */
 // Armazena escalação temporária enquanto preenche o formulário
-let _escalaTemp={s:{},r:{}};
+let _escalaTemp={s:{},r:{},es:{}};
 
 function renderEscala(prefix){
   const eq=arr(DB.equipe);
   const container=$('escala-'+prefix);if(!container)return;
-  const valor=+($(prefix==='s'?'sv':'rv').value)||0;
+  const valor=+($(prefix==='s'?'sv':prefix==='es'?'es-valor':'rv').value)||0;
   const liq=+(valor*(1-TAX)).toFixed(2);
 
   if(!eq.length){
@@ -1582,7 +1654,7 @@ function toggleMembro(prefix,mbId){
 }
 
 function atualizarPreviewEscala(prefix){
-  const valor=+($(prefix==='s'?'sv':'rv').value)||0;
+  const valor=+($(prefix==='s'?'sv':prefix==='es'?'es-valor':'rv').value)||0;
   const liq=+(valor*(1-TAX)).toFixed(2);
   const selecionados=Object.keys(_escalaTemp[prefix]).filter(id=>DB.equipe[id]);
   const prev=$('escala-'+prefix+'-preview');if(!prev)return;
@@ -2411,6 +2483,10 @@ function abrirEditShow(id){
   $('es-tipo').value=sh.tipo||'Outro';
   $('es-status').value=sh.status||'agendado';
   $('es-obs').value=sh.obs||'';
+  // Carregar escalacao existente no seletor temporário de edição
+  _escalaTemp['es']={};
+  (sh.escalacao||[]).forEach(x=>{ if(x.mbId && DB.equipe[x.mbId]) _escalaTemp['es'][x.mbId]=true; });
+  renderEscala('es');
   const m=$('modal-show');m.style.display='flex';
   setTimeout(()=>m.addEventListener('click',function h(e){if(e.target===m){fecharModalShow();m.removeEventListener('click',h);}}),100);
 }
@@ -2418,8 +2494,14 @@ function fecharModalShow(){$('modal-show').style.display='none';}
 async function salvarEditShow(){
   const id=$('edit-show-id').value;if(!DB.shows[id])return;
   const valor=+$('es-valor').value||0,data=$('es-data').value||today(),prazo=+$('es-prazo').value||30;
-  Object.assign(DB.shows[id],{nome:$('es-nome').value.trim(),data,hora:$('es-hora').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('es-tipo').value,status:$('es-status').value,obs:$('es-obs').value.trim(),recData:addDays(data,prazo),falta:!valor?['valor']:[]});
-  await save();fecharModalShow();toast('Show atualizado');render();
+  const escalacao=Object.keys(_escalaTemp['es']).filter(mid=>DB.equipe[mid]).map(mid=>{
+    const m=DB.equipe[mid];
+    const vShow=m.perc>0&&valor?+(valor*(m.perc/100)).toFixed(2):m.val||0;
+    return{mbId:mid,nome:m.nome,fn:m.fn,val:vShow};
+  });
+  Object.assign(DB.shows[id],{nome:$('es-nome').value.trim(),data,hora:$('es-hora').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('es-tipo').value,status:$('es-status').value,obs:$('es-obs').value.trim(),recData:addDays(data,prazo),falta:!valor?['valor']:[],escalacao});
+  await save();fecharModalShow();
+  toast('Show atualizado'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
 
 /* ─── EDIÇÃO DE LANÇAMENTO ──────────────────────── */
@@ -3082,6 +3164,33 @@ function toggleMore(){
   document.getElementById('btn-more').classList.toggle('on',m.style.display==='block');
 }
 function closeMore(){document.getElementById('more-menu').style.display='none';document.getElementById('btn-more').classList.remove('on');}
+function goFromMore(viewId){closeMore();if(viewId==='conexao'){mostrarConexao();return;}go(viewId);}
+function syncAgora(){atualizarApp();}
+function mostrarConexao(){
+  const key=jbKey(), bin=jbBin();
+  const el=$('avisos');
+  const estado= key&&bin ?
+    `<div class="card" style="border-color:rgba(200,180,120,.3)">
+      <div style="font-size:12px;font-weight:700;color:var(--gold2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Conexão ativa (JSONBin)</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.9">
+        Bin ID: <b style="color:var(--tx);font-family:'IBM Plex Mono',monospace;font-size:11px">${bin}</b><br>
+        API Key: <b style="color:var(--tx);font-family:'IBM Plex Mono',monospace;font-size:11px">${key.slice(0,8)}…</b>
+      </div>
+      <button onclick="copiarBin()" style="margin-top:10px;width:100%;background:rgba(200,180,120,.12);color:var(--gold2);border:1px solid rgba(200,180,120,.3);border-radius:8px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter">Copiar Bin ID (para o outro aparelho)</button>
+    </div>` :
+    `<div class="card" style="border-color:var(--line)">
+      <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Sem sincronização</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.7">Os dados ficam só neste aparelho. Para partilhar entre aparelhos, conecte o JSONBin.</div>
+      <button onclick="document.getElementById('fb-setup-view').style.display='block';closeMore()" style="margin-top:10px;width:100%;background:rgba(200,180,120,.12);color:var(--gold2);border:1px solid rgba(200,180,120,.3);border-radius:8px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter">Conectar agora</button>
+    </div>`;
+  el.innerHTML=estado;el.style.display='block';
+  setTimeout(()=>{el.style.opacity='0';setTimeout(()=>{el.style.display='none';el.style.opacity='1';},600);},12000);
+}
+function copiarBin(){
+  const bin=jbBin();
+  if(navigator.clipboard){navigator.clipboard.writeText(bin).then(()=>toast('Bin ID copiado! Cole no outro aparelho'));}
+  else{toast('Bin: '+bin);}
+}
 document.addEventListener('click',e=>{
   const m=document.getElementById('more-menu');
   if(m.style.display!=='none'&&!m.contains(e.target)&&!document.getElementById('btn-more').contains(e.target))closeMore();
