@@ -3,53 +3,63 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#050b18">
+<meta name="theme-color" content="#050507">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
 <title>Luah Produção</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ─── TOKENS ──────────────────────────────────────── */
+/* ══════ LUANNA — UNIVERSE BLACK & GOLD ══════ */
+
 :root{
-  --ink:   #050b18;
-  --s1:    #0a1628;
-  --s2:    #0f1f3a;
-  --s3:    #162848;
-  --s4:    #1c3260;
-  --line:  #1e3a5f;
-  --line2: #28497a;
-
-  --tx:    #e8f0ff;
-  --t2:    #7a9cc8;
-  --t3:    #3d5c8a;
-
-  --gold:  #e8b86d;
-  --gold2: #f5c97c;
-  --vio:   #7c5cfc;
-  --vio2:  #9b7eff;
-  --rose:  #f25d7c;
-  --rose2: #ff8098;
-  --teal:  #22d3a0;
-  --sky:   #38bdf8;
-  --amber: #f59e0b;
-
-  --r:  16px;
-  --rs: 10px;
-  --r-pill: 40px;
+  --ink:   #050507;
+  --s1:    #0a0a0d;
+  --s2:    #0e0e12;
+  --s3:    #131318;
+  --s4:    #1a1a21;
+  --line:  #1c1c23;
+  --line2: #28282f;
+  --tx:    #f2f2f5;
+  --t2:    #a3a093;
+  --t3:    #7a7771;
+  --gold:  #c8b478;
+  --gold2: #d9c088;
+  --vio:   #c8b478;
+  --vio2:  #d9c088;
+  --rose:  #b06250;
+  --rose2: #c98572;
+  --teal:  #d9c088;
+  --sky:   #9a9078;
+  --amber: #d9c088;
+  --r:     10px;
+  --rs:    8px;
+  --r-pill:24px;
 }
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
 html,body{height:100%}
+body{background:var(--ink)}
+
+
+50%{opacity:.9}}
+
+.app-shell{position:relative;z-index:1}
+
 body{
   font-family:'Inter',sans-serif;
   background:var(--ink);
   color:var(--tx);
   min-height:100%;
   overflow-x:hidden;
+  font-size:14px;
+  letter-spacing:-.01em;
   font-size:15px;
 }
 
 /* ─── TOAST ──────────────────────────────────────── */
+.toast{font-weight:600}
 .toast{
   position:fixed;bottom:88px;left:50%;
   transform:translateX(-50%) translateY(16px);
@@ -58,39 +68,37 @@ body{
   color:var(--tx);
   font-size:13px;font-weight:600;
   padding:10px 20px;
-  border-radius:var(--r-pill);
+  border-radius:var(--rs);
   z-index:9999;opacity:0;
   transition:all .28s cubic-bezier(.34,1.56,.64,1);
   white-space:nowrap;
-  box-shadow:0 8px 32px rgba(0,0,0,.6);
   pointer-events:none;
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.toast.ok{border-color:rgba(34,211,160,.4);color:var(--teal)}
-.toast.err{border-color:rgba(242,93,124,.4);color:var(--rose)}
+.toast.ok{border-color:rgba(217,192,136,.35);color:var(--teal)}
+.toast.err{border-color:rgba(176,98,80,.4);color:var(--rose)}
 
 /* ─── HEADER ─────────────────────────────────────── */
 .hdr{
-  position:sticky;top:0;z-index:100;
-  background:rgba(10,22,40,.85);
-  backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
+  position:sticky;top:0;z-index:50;
+  background:rgba(5,5,7,.88);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
   border-bottom:1px solid var(--line);
   padding:0 18px;
   display:flex;align-items:center;justify-content:space-between;
-  height:58px;
+  height:56px;
 }
 .hdr-brand{display:flex;align-items:center;gap:11px}
 .hdr-logo{
-  width:36px;height:36px;border-radius:11px;
-  background:linear-gradient(135deg,#1a0d40,#2d1a70);
-  border:1px solid rgba(124,92,252,.35);
+  width:32px;height:32px;border-radius:8px;
+  background:var(--s2);
+  border:1px solid rgba(200,180,120,.35);
   display:flex;align-items:center;justify-content:center;
-  box-shadow:0 0 16px rgba(124,92,252,.25);
 }
-.hdr-logo svg{width:20px;height:20px}
-.hdr-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;letter-spacing:-.3px}
-.hdr-name span{color:var(--vio2)}
+.hdr-logo svg{width:16px;height:16px}
+.hdr-name{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:var(--tx)}
+.hdr-name span{color:var(--gold);background:none;-webkit-background-clip:text;background-clip:text}
 .hdr-sub{font-size:11px;color:var(--t3);margin-top:1px}
 .sync-pill{
   display:flex;align-items:center;gap:5px;
@@ -106,9 +114,9 @@ body{
 /* ─── BOTTOM NAV ─────────────────────────────────── */
 .bnav{
   position:fixed;bottom:0;left:0;right:0;z-index:100;
-  background:rgba(9,18,34,.92);
-  backdrop-filter:blur(24px);
-  -webkit-backdrop-filter:blur(24px);
+  background:rgba(5,5,7,.92);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
   border-top:1px solid var(--line);
   display:flex;align-items:center;
   padding:0 4px;
@@ -127,11 +135,11 @@ body{
 .bnav-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:stroke .18s}
 .bnav-btn.on{color:var(--vio2)}
 .bnav-btn.on svg{stroke:var(--vio2)}
-.bnav-btn.on::before{
+.bnav-btn.on::after{
   content:'';
-  position:absolute;top:6px;left:50%;transform:translateX(-50%);
-  width:28px;height:28px;border-radius:50%;
-  background:rgba(124,92,252,.15);
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:26px;height:1px;
+  background:var(--gold);
 }
 
 /* ─── PAGE ───────────────────────────────────────── */
@@ -142,10 +150,10 @@ body{
 .sl{
   font-size:10px;font-weight:700;color:var(--t3);
   text-transform:uppercase;letter-spacing:1px;
-  margin:20px 0 10px;
-  display:flex;align-items:center;gap:9px;
+  margin:18px 0 8px;
+  display:flex;align-items:center;gap:8px;
 }
-.sl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.sl::after{content:'';flex:1;height:1px;background:var(--line)}
 .sl:first-child{margin-top:0}
 
 /* ─── KPI CARDS ──────────────────────────────────── */
@@ -154,19 +162,10 @@ body{
   background:var(--s2);
   border:1px solid var(--line);
   border-radius:var(--r);
-  padding:16px;
-  position:relative;overflow:hidden;
+  padding:14px;
 }
-.kpi::after{
-  content:'';position:absolute;inset:0;pointer-events:none;
-  background:radial-gradient(ellipse at top right, var(--glow,rgba(124,92,252,.07)), transparent 70%);
-}
-.kpi.k-gold{--glow:rgba(232,184,109,.1)}
-.kpi.k-rose{--glow:rgba(242,93,124,.1)}
-.kpi.k-vio{--glow:rgba(124,92,252,.1)}
-.kpi.k-teal{--glow:rgba(34,211,160,.08)}
 .kpi-label{font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
-.kpi-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;letter-spacing:-.5px;line-height:1}
+.kpi-val{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;letter-spacing:-.5px;line-height:1}
 .kpi-val.g{color:var(--teal)}.kpi-val.gold{color:var(--gold)}.kpi-val.r{color:var(--rose)}.kpi-val.v{color:var(--vio2)}.kpi-val.a{color:var(--amber)}
 .kpi-trend{font-size:11px;color:var(--t3);margin-top:5px}
 
@@ -175,20 +174,13 @@ body{
   background:var(--s2);
   border:1px solid var(--line);
   border-radius:var(--r);
-  padding:16px;
-  margin-bottom:11px;
+  padding:14px 16px;
+  margin-bottom:10px;
 }
-.card.glass{
-  background:linear-gradient(135deg,rgba(124,92,252,.12),rgba(34,211,160,.06));
-  border-color:rgba(124,92,252,.25);
-  backdrop-filter:blur(12px);
-}
-.card.gold-glass{
-  background:linear-gradient(135deg,rgba(232,184,109,.1),rgba(245,201,124,.05));
-  border-color:rgba(232,184,109,.25);
-}
-.card.warn{background:rgba(245,158,11,.05);border-color:rgba(245,158,11,.25)}
-.card.danger{background:rgba(242,93,124,.05);border-color:rgba(242,93,124,.2)}
+.card.glass{background:var(--s2);border-color:rgba(200,180,120,.3)}
+.card.gold-glass{background:var(--s2);border-color:rgba(200,180,120,.3)}
+.card.warn{background:rgba(217,192,136,.05);border-color:rgba(217,192,136,.22)}
+.card.danger{background:rgba(176,98,80,.05);border-color:rgba(176,98,80,.25)}
 
 /* ─── ITEM ───────────────────────────────────────── */
 .item{
@@ -196,17 +188,16 @@ body{
   border:1px solid var(--line);
   border-radius:var(--r);
   padding:14px 16px;
-  margin-bottom:8px;
-  border-left:3px solid transparent;
-  transition:border-color .2s,transform .15s;
+  margin-bottom:6px;
+  transition:border-color .2s;
 }
-.item:active{transform:scale(.99)}
-.item.ig{border-left-color:var(--teal)}
-.item.iv{border-left-color:var(--vio)}
-.item.ir{border-left-color:var(--rose)}
-.item.ia{border-left-color:var(--amber)}
-.item.ib{border-left-color:var(--sky)}
-.item.igold{border-left-color:var(--gold)}
+.item:active{opacity:.7}
+.item.ig{background:rgba(217,192,136,.04)}
+.item.iv{background:rgba(200,180,120,.04)}
+.item.ir{background:rgba(176,98,80,.03)}
+.item.ia{background:rgba(217,192,136,.04)}
+.item.ib{background:var(--s2)}
+.item.igold{background:rgba(200,180,120,.04)}
 
 .ih{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .iname{font-size:14px;font-weight:600;line-height:1.3}
@@ -235,8 +226,8 @@ input,select,textarea{
   -webkit-appearance:none;appearance:none;
 }
 input:focus,select:focus,textarea:focus{
-  border-color:var(--vio);
-  box-shadow:0 0 0 3px rgba(124,92,252,.12);
+  border-color:var(--gold);
+  box-shadow:0 0 0 3px rgba(200,180,120,.1);
 }
 select option{background:var(--s1)}
 textarea{resize:vertical;min-height:72px}
@@ -244,93 +235,88 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 
 /* ─── BUTTONS ────────────────────────────────────── */
 .btn{
-  padding:13px 18px;border-radius:var(--rs);
-  font-size:14px;font-weight:700;font-family:'Inter';
+  padding:12px 18px;border-radius:var(--rs);
+  font-size:13px;font-weight:600;font-family:'Inter';
   cursor:pointer;border:none;width:100%;
-  transition:opacity .15s,transform .1s,box-shadow .2s;
-  letter-spacing:-.1px;
+  transition:opacity .15s,transform .1s;
+  letter-spacing:-.01em;
 }
 .btn:active{opacity:.85;transform:scale(.98)}
-.btn.pri{
-  background:linear-gradient(135deg,var(--vio),#5b3ee8);
-  color:#fff;
-  box-shadow:0 4px 20px rgba(124,92,252,.35);
-}
-.btn.pri:hover{box-shadow:0 6px 28px rgba(124,92,252,.5)}
-.btn.gold-btn{
-  background:linear-gradient(135deg,var(--gold),#c99040);
-  color:#050b18;
-  box-shadow:0 4px 16px rgba(232,184,109,.3);
-}
+.btn.pri{background:var(--gold);color:#050507}
+.btn.pri:hover{opacity:.9}
+.btn.gold-btn{background:var(--gold);color:#050507}
 .btn.ghost{
   background:var(--s3);color:var(--t2);
   border:1px solid var(--line2);
 }
 .btn.wa{
-  background:rgba(37,211,102,.1);color:#25d366;
-  border:1px solid rgba(37,211,102,.25);
+  background:var(--s1);color:#7dc9a1;
+  border:1px solid rgba(125,201,161,.28);
   width:auto;font-size:12px;padding:8px 14px;
 }
-.btn.sm{font-size:11px;padding:6px 11px;width:auto;font-weight:700}
-.btn.sm.on{background:var(--vio);color:#fff;border:none;box-shadow:0 2px 10px rgba(124,92,252,.4)}
-.btn.sm.g{background:rgba(34,211,160,.12);color:var(--teal);border:1px solid rgba(34,211,160,.25)}
-.btn.sm.del{background:rgba(242,93,124,.1);color:var(--rose);border:1px solid rgba(242,93,124,.25)}
+.btn.sm{font-size:11px;padding:6px 11px;width:auto;font-weight:600}
+.btn.sm.on{background:var(--gold);color:#050507;border:none}
+.btn.sm.g{background:var(--s1);color:var(--teal);border:1px solid rgba(217,192,136,.25)}
+.btn.sm.del{background:var(--s1);color:var(--rose);border:1px solid rgba(176,98,80,.3)}
 .brow{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
 
 /* ─── BADGE ──────────────────────────────────────── */
 .bdg{font-size:10px;padding:3px 9px;border-radius:var(--r-pill);font-weight:700;white-space:nowrap;letter-spacing:.1px}
-.bdg.g{background:rgba(34,211,160,.12);color:var(--teal);border:1px solid rgba(34,211,160,.22)}
-.bdg.r{background:rgba(242,93,124,.12);color:var(--rose);border:1px solid rgba(242,93,124,.22)}
-.bdg.a{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.22)}
-.bdg.v{background:rgba(124,92,252,.14);color:var(--vio2);border:1px solid rgba(124,92,252,.25)}
-.bdg.b{background:rgba(56,189,248,.1);color:var(--sky);border:1px solid rgba(56,189,248,.22)}
-.bdg.gold{background:rgba(232,184,109,.12);color:var(--gold);border:1px solid rgba(232,184,109,.25)}
+.bdg.g{background:rgba(217,192,136,.12);color:var(--teal);border:1px solid rgba(217,192,136,.22)}
+.bdg.r{background:rgba(176,98,80,.12);color:var(--rose);border:1px solid rgba(176,98,80,.22)}
+.bdg.a{background:rgba(217,192,136,.1);color:var(--amber);border:1px solid rgba(217,192,136,.22)}
+.bdg.v{background:rgba(200,180,120,.14);color:var(--vio2);border:1px solid rgba(200,180,120,.28)}
+.bdg.b{background:rgba(154,144,120,.05);color:var(--sky);border:1px solid rgba(154,144,120,.22)}
+.bdg.gold{background:rgba(200,180,120,.12);color:var(--gold);border:1px solid rgba(200,180,120,.25)}
 .bdg.x{background:var(--s3);color:var(--t3);border:1px solid var(--line)}
 
 /* ─── PROGRESS ───────────────────────────────────── */
-.pb{background:rgba(255,255,255,.06);border-radius:4px;height:5px;overflow:hidden;margin-top:8px}
-.pf{height:5px;border-radius:4px;transition:width .6s cubic-bezier(.34,1.2,.64,1)}
-.pf.g{background:linear-gradient(90deg,var(--teal),#16a37a)}
-.pf.a{background:linear-gradient(90deg,var(--amber),#d97706)}
-.pf.r{background:linear-gradient(90deg,var(--rose),#c0294a)}
-.pf.v{background:linear-gradient(90deg,var(--vio),#5b3ee8)}
+.pb{background:var(--s3);border-radius:4px;height:4px;overflow:hidden;margin-top:8px}
+.pf{height:4px;border-radius:4px;transition:width .6s ease}
+.pf.g{background:var(--teal)}
+.pf.a{background:var(--amber)}
+.pf.r{background:var(--rose)}
+.pf.v{background:var(--vio)}
 
 /* ─── INNER TABS ─────────────────────────────────── */
 .itabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
 .itab{
-  font-size:12px;padding:7px 14px;border-radius:var(--r-pill);
-  background:var(--s2);color:var(--t3);
-  cursor:pointer;font-weight:600;border:1px solid var(--line);
+  font-size:11px;padding:6px 13px;border-radius:var(--r-pill);
+  background:transparent;color:var(--t3);
+  cursor:pointer;font-weight:500;border:1px solid var(--line);
   font-family:'Inter';transition:all .15s;
+  letter-spacing:.2px;
 }
 .itab.on{
-  background:rgba(124,92,252,.2);color:var(--vio2);
-  border-color:rgba(124,92,252,.4);
-  box-shadow:0 0 12px rgba(124,92,252,.15);
+  background:rgba(200,180,120,.08);color:var(--vio2);
+  border-color:rgba(200,180,120,.4);
 }
 
 /* ─── NOTICE ─────────────────────────────────────── */
 .notice{border-radius:var(--rs);padding:10px 13px;font-size:12px;font-weight:500;line-height:1.5;margin-bottom:10px}
-.notice.ok{background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);color:var(--teal)}
-.notice.warn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:var(--amber)}
-.notice.info{background:rgba(124,92,252,.08);border:1px solid rgba(124,92,252,.2);color:var(--vio2)}
-.notice.v{background:rgba(124,92,252,.08);border:1px solid rgba(124,92,252,.2);color:var(--vio2)}
+.notice.ok{background:rgba(217,192,136,.06);border:1px solid rgba(217,192,136,.25);color:var(--teal)}
+.notice.warn{background:rgba(217,192,136,.06);border:1px solid rgba(217,192,136,.22);color:var(--amber)}
+.notice.info{background:rgba(200,180,120,.06);border:1px solid rgba(200,180,120,.22);color:var(--vio2)}
+.notice.v{background:rgba(200,180,120,.06);border:1px solid rgba(200,180,120,.22);color:var(--vio2)}
 
 /* ─── AGENDA ─────────────────────────────────────── */
 .ag{
   display:flex;gap:12px;align-items:flex-start;
-  background:var(--s2);border:1px solid var(--line);
-  border-radius:var(--r);padding:12px 14px;margin-bottom:7px;
+  background:transparent;border:none;
+  border-bottom:1px solid var(--line);
+  padding:11px 2px;margin-bottom:2px;
   transition:border-color .2s;
 }
 .ag:hover{border-color:var(--line2)}
 .ag-date{
-  min-width:40px;text-align:center;
-  background:var(--s3);border-radius:9px;
-  padding:6px 4px;flex-shrink:0;
-  border:1px solid var(--line);
+  min-width:36px;text-align:left;
+  background:transparent;border-radius:0;
+  padding:2px 0;flex-shrink:0;
+  border:none;
+  border-left:2px solid var(--gold);
+  padding-left:8px;
 }
-.ag-n{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;line-height:1}
+.ag-n{font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:500;line-height:1}
 .ag-w{font-size:9px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-top:2px;letter-spacing:.5px}
 
 /* ─── REL ────────────────────────────────────────── */
@@ -339,22 +325,20 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 
 /* ─── MIC ────────────────────────────────────────── */
 .mic{
-  width:72px;height:72px;border-radius:50%;
-  background:linear-gradient(135deg,#1a0d40,#2d1a70);
-  border:1px solid rgba(124,92,252,.4);
+  width:68px;height:68px;border-radius:50%;
+  background:var(--s2);
+  border:1px solid rgba(200,180,120,.4);
   display:flex;align-items:center;justify-content:center;
   cursor:pointer;margin:0 auto;
-  box-shadow:0 0 32px rgba(124,92,252,.2);
-  transition:transform .2s,box-shadow .2s;
+  transition:transform .2s,border-color .2s;
 }
 .mic:active{transform:scale(.95)}
 .mic.on{
-  background:linear-gradient(135deg,#3d0b1b,#5c1228);
-  border-color:rgba(242,93,124,.5);
-  box-shadow:0 0 40px rgba(242,93,124,.3);
+  background:var(--s3);
+  border-color:rgba(176,98,80,.6);
   animation:mpulse 1.2s ease-in-out infinite;
 }
-.mic svg{width:28px;height:28px;fill:var(--vio2)}
+.mic svg{width:26px;height:26px;fill:var(--gold)}
 .mic.on svg{fill:var(--rose)}
 @keyframes mpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
 
@@ -365,38 +349,32 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   border:3px solid var(--line);flex-shrink:0;
   position:relative;
 }
-.score-num{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;line-height:1}
+.score-num{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:500;line-height:1}
 .score-lbl{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
 
 /* ─── CONTENT ────────────────────────────────────── */
 .idea-box{
-  background:linear-gradient(135deg,rgba(124,92,252,.15),rgba(34,211,160,.06));
-  border:1px solid rgba(124,92,252,.25);
-  border-radius:var(--r);padding:18px;margin-bottom:14px;
-  position:relative;overflow:hidden;
-}
-.idea-box::before{
-  content:'♪';
-  position:absolute;right:12px;bottom:-8px;
-  font-size:80px;opacity:.04;line-height:1;pointer-events:none;
+  background:var(--s2);
+  border:1px solid rgba(200,180,120,.25);
+  border-radius:var(--r);padding:16px;margin-bottom:12px;
 }
 
 /* ─── SETUP ──────────────────────────────────────── */
 .setup{
   background:var(--s2);border:1px solid var(--line);
-  border-radius:var(--r);padding:24px;margin:16px 0;
+  border-radius:var(--r);padding:22px;margin:14px 0;
 }
 .setup h2{
-  font-family:'Syne',sans-serif;
-  font-size:26px;font-weight:800;
-  letter-spacing:-.5px;margin-bottom:8px;
+  font-family:'Space Grotesk',sans-serif;
+  font-size:22px;font-weight:600;
+  letter-spacing:.5px;margin-bottom:8px;
 }
 .setup p{font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px}
 
 /* ─── QUICK-ADD ──────────────────────────────────── */
 .qbar{
   position:fixed;bottom:60px;left:0;right:0;z-index:99;
-  background:rgba(10,22,40,.95);
+  background:rgba(5,5,7,.95);
   backdrop-filter:blur(20px);
   border-top:1px solid var(--line);
   padding:10px 14px;
@@ -411,45 +389,29 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 .qbar input:focus{border-color:var(--vio)}
 .qbar input::placeholder{color:var(--t3)}
 .qbar-btn{
-  background:linear-gradient(135deg,var(--vio),#5b3ee8);
-  color:#fff;border:none;border-radius:var(--rs);
+  background:var(--gold);
+  color:#050507;border:none;border-radius:var(--rs);
   padding:10px 16px;font-size:13px;font-weight:700;
   cursor:pointer;white-space:nowrap;font-family:'Inter';
-  box-shadow:0 4px 14px rgba(124,92,252,.35);
 }
 
 /* ─── DASHBOARD HERO ─────────────────────────────── */
 .dash-hero{
-  background:linear-gradient(135deg,#0f1f3a,#162848);
-  border:1px solid var(--line2);
-  border-radius:20px;
-  padding:20px;
-  margin-bottom:14px;
-  position:relative;overflow:hidden;
-}
-.dash-hero::before{
-  content:'';
-  position:absolute;top:-40px;right:-40px;
-  width:180px;height:180px;border-radius:50%;
-  background:radial-gradient(circle,rgba(124,92,252,.18),transparent 70%);
-  pointer-events:none;
-}
-.dash-hero::after{
-  content:'';
-  position:absolute;bottom:-30px;left:-20px;
-  width:140px;height:140px;border-radius:50%;
-  background:radial-gradient(circle,rgba(232,184,109,.1),transparent 70%);
-  pointer-events:none;
+  background:var(--s1);
+  border:1px solid var(--line);
+  border-radius:var(--r);
+  padding:18px;
+  margin-bottom:12px;
 }
 .dash-hero-label{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
 .dash-hero-val{
-  font-family:'Syne',sans-serif;
-  font-size:38px;font-weight:800;letter-spacing:-1.5px;line-height:1;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:32px;font-weight:500;letter-spacing:-1px;line-height:1;
 }
 .dash-hero-sub{font-size:12px;color:var(--t2);margin-top:8px;line-height:1.5}
 .dash-hero-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
 .dash-hero-stat{text-align:center}
-.dash-hero-stat .sv{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;letter-spacing:-.5px}
+.dash-hero-stat .sv{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500}
 .dash-hero-stat .sl2{font-size:10px;color:var(--t3);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
 .dash-divider{height:1px;background:var(--line);margin:14px 0}
 
@@ -470,15 +432,9 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 <div class="toast" id="toast"></div>
 
 <!-- HEADER -->
-<header class="hdr">
+<div class="app-shell"><header class="hdr">
   <div class="hdr-brand">
-    <div class="hdr-logo">
-      <!-- Music note icon -->
-      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(155,126,255,.9)" stroke-width="2" stroke-linecap="round">
-        <path d="M9 18V5l12-2v13"/>
-        <circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-      </svg>
-    </div>
+    <div class="hdr-logo"><span style="font-family:'Space Grotesk';font-weight:700;font-size:15px;color:var(--gold)">L</span></div>
     <div>
       <div class="hdr-name">Luah <span>Produção</span></div>
       <div class="hdr-sub" id="slbl">iniciando…</div>
@@ -488,7 +444,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <div class="sync-pill" onclick="atualizarApp()" style="cursor:pointer" title="Toque para sincronizar">
       <div class="sdot" id="sdot"></div><span id="stxt">—</span>
     </div>
-    <button onclick="atualizarApp()" id="btn-refresh" title="Atualizar dados" style="background:rgba(124,92,252,.12);border:1px solid rgba(124,92,252,.25);border-radius:20px;width:30px;height:30px;font-size:14px;cursor:pointer;transition:transform .5s;display:flex;align-items:center;justify-content:center">🔄</button>
+    <button onclick="atualizarApp()" id="btn-refresh" title="Atualizar dados" style="background:var(--s2);border:1px solid var(--line);border-radius:20px;width:30px;height:30px;font-size:14px;cursor:pointer;transition:transform .5s;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(217,192,136,.95)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg></button>
     <button onclick="sair()" style="background:transparent;border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--t3);cursor:pointer;font-family:Inter">Sair</button>
   </div>
 </header>
@@ -500,8 +456,8 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;background:var(--ink)">
 
     <!-- Logo grande -->
-    <div style="width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,#1a0d40,#2d1a70);border:1px solid rgba(124,92,252,.35);display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 0 40px rgba(124,92,252,.2)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(155,126,255,.9)" stroke-width="2" stroke-linecap="round" style="width:34px;height:34px">
+    <div style="width:64px;height:64px;border-radius:12px;background:var(--s2);border:1px solid rgba(200,180,120,.35);display:flex;align-items:center;justify-content:center;margin-bottom:18px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(217,192,136,.95)" stroke-width="1.8" stroke-linecap="round" style="width:34px;height:34px">
         <path d="M9 18V5l12-2v13"/>
         <circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
       </svg>
@@ -524,7 +480,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
         <div style="font-size:12px;color:var(--t2);line-height:1.7">
           1. Crie sua senha abaixo e compartilhe com o marido<br>
           2. Os dois entram com a mesma senha<br>
-          3. Dados sincronizados em tempo real ✅
+          3. Dados sincronizados em tempo real
         </div>
         <div class="sp"></div>
         <div class="fg"><label>Criar nova senha</label>
@@ -548,28 +504,28 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 <!-- SETUP JSONBIN -->
 <div id="fb-setup-view" style="display:none;padding:0">
   <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;background:var(--ink);overflow-y:auto">
-    <div style="width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,#1a0d40,#2d1a70);border:1px solid rgba(124,92,252,.35);display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 0 40px rgba(124,92,252,.2)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(155,126,255,.9)" stroke-width="2" stroke-linecap="round" style="width:34px;height:34px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+    <div style="width:64px;height:64px;border-radius:12px;background:var(--s2);border:1px solid rgba(200,180,120,.35);display:flex;align-items:center;justify-content:center;margin-bottom:18px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(217,192,136,.95)" stroke-width="1.8" stroke-linecap="round" style="width:34px;height:34px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
     </div>
     <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px;text-align:center">Conectar ao banco de dados</div>
     <div style="font-size:13px;color:var(--t2);margin-bottom:24px;text-align:center;line-height:1.6;max-width:340px">Use o <b style="color:var(--tx)">JSONBin</b> — gratuito, sem autenticação de dois fatores, pronto em 2 minutos.</div>
 
     <div style="width:100%;max-width:360px">
-      <div style="background:var(--s2);border:1px solid rgba(124,92,252,.3);border-radius:var(--r);padding:18px;margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">📋 Passo a passo (2 minutos)</div>
+      <div style="background:var(--s2);border:1px solid rgba(200,180,120,.3);border-radius:var(--r);padding:18px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Passo a passo (2 minutos)</div>
         <div style="font-size:13px;color:var(--t2);line-height:2.2">
-          <b style="color:var(--tx);background:rgba(124,92,252,.15);padding:1px 7px;border-radius:4px">1</b>&nbsp;
+          <b style="color:var(--tx);background:rgba(200,180,120,.15);padding:1px 7px;border-radius:4px">1</b>&nbsp;
           Acesse <a href="https://jsonbin.io" target="_blank" style="color:var(--vio2);font-weight:700">jsonbin.io</a> → <b style="color:var(--tx)">Sign Up</b><br>
-          <b style="color:var(--tx);background:rgba(124,92,252,.15);padding:1px 7px;border-radius:4px">2</b>&nbsp;
+          <b style="color:var(--tx);background:rgba(200,180,120,.15);padding:1px 7px;border-radius:4px">2</b>&nbsp;
           Entre com o <b style="color:var(--tx)">Gmail</b> (botão Google)<br>
-          <b style="color:var(--tx);background:rgba(124,92,252,.15);padding:1px 7px;border-radius:4px">3</b>&nbsp;
+          <b style="color:var(--tx);background:rgba(200,180,120,.15);padding:1px 7px;border-radius:4px">3</b>&nbsp;
           No menu clique <b style="color:var(--tx)">API Keys</b> → <b style="color:var(--tx)">+ Create Access Key</b><br>
-          <b style="color:var(--tx);background:rgba(124,92,252,.15);padding:1px 7px;border-radius:4px">4</b>&nbsp;
+          <b style="color:var(--tx);background:rgba(200,180,120,.15);padding:1px 7px;border-radius:4px">4</b>&nbsp;
           Nome: <em>luah</em> → marque <b style="color:var(--tx)">Read</b> e <b style="color:var(--tx)">Write</b> → Create<br>
-          <b style="color:var(--tx);background:rgba(124,92,252,.15);padding:1px 7px;border-radius:4px">5</b>&nbsp;
+          <b style="color:var(--tx);background:rgba(200,180,120,.15);padding:1px 7px;border-radius:4px">5</b>&nbsp;
           Copie a chave gerada e cole abaixo<br>
-          <b style="color:var(--tx);background:rgba(124,92,252,.15);padding:1px 7px;border-radius:4px">6</b>&nbsp;
-          Clique <b style="color:var(--tx)">Conectar</b> — o app cria o banco sozinho ✅
+          <b style="color:var(--tx);background:rgba(200,180,120,.15);padding:1px 7px;border-radius:4px">6</b>&nbsp;
+          Clique <b style="color:var(--tx)">Conectar</b> — o app cria o banco sozinho
         </div>
       </div>
 
@@ -624,7 +580,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   <div id="sa"><div id="lista-shows"></div></div>
   <div id="ss" style="display:none"><div id="lista-series"></div></div>
   <div id="sna" style="display:none">
-    <div class="notice info">🧾 Simples Nacional 6% calculado automaticamente</div>
+    <div class="notice info">Simples Nacional 6% calculado automaticamente</div>
     <div class="card">
       <div class="r2">
         <div class="fg"><label>Nome / local</label><input id="sn" placeholder="ex: Casamento Silva"></div>
@@ -647,12 +603,12 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <!-- ESCALAÇÃO -->
       <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">👥 Escalação do show</div>
-          <button type="button" onclick="toggleNovoMembro('s')" style="font-size:11px;background:rgba(124,92,252,.12);color:var(--vio2);border:1px solid rgba(124,92,252,.25);border-radius:20px;padding:4px 11px;cursor:pointer;font-family:Inter;font-weight:700">+ Novo membro</button>
+          <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Escalação do show</div>
+          <button type="button" onclick="toggleNovoMembro('s')" style="font-size:11px;background:rgba(200,180,120,.12);color:var(--vio2);border:1px solid rgba(200,180,120,.28);border-radius:20px;padding:4px 11px;cursor:pointer;font-family:Inter;font-weight:700">+ Novo membro</button>
         </div>
         <div id="escala-s" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
         <!-- Formulário rápido de novo membro -->
-        <div id="novo-mb-s" style="display:none;background:var(--s3);border:1px solid rgba(124,92,252,.2);border-radius:var(--rs);padding:12px;margin-bottom:10px">
+        <div id="novo-mb-s" style="display:none;background:var(--s3);border:1px solid rgba(200,180,120,.2);border-radius:var(--rs);padding:12px;margin-bottom:10px">
           <div style="font-size:11px;font-weight:700;color:var(--vio2);margin-bottom:9px">Cadastrar membro rapidamente</div>
           <div class="r2">
             <div class="fg"><label>Nome</label><input id="nm-s-nome" placeholder="ex: João Brito"></div>
@@ -681,7 +637,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     </div>
   </div>
   <div id="sns" style="display:none">
-    <div class="notice v">🔄 Shows que se repetem toda semana automaticamente</div>
+    <div class="notice v">Shows que se repetem toda semana automaticamente</div>
     <div class="card">
       <div class="r2">
         <div class="fg"><label>Nome / local</label><input id="rn" placeholder="ex: Noite de Branco — IberoStar"></div>
@@ -724,11 +680,11 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <!-- ESCALAÇÃO DA SÉRIE -->
       <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">👥 Escalação fixa da série</div>
-          <button type="button" onclick="toggleNovoMembro('r')" style="font-size:11px;background:rgba(124,92,252,.12);color:var(--vio2);border:1px solid rgba(124,92,252,.25);border-radius:20px;padding:4px 11px;cursor:pointer;font-family:Inter;font-weight:700">+ Novo membro</button>
+          <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Escalação fixa da série</div>
+          <button type="button" onclick="toggleNovoMembro('r')" style="font-size:11px;background:rgba(200,180,120,.12);color:var(--vio2);border:1px solid rgba(200,180,120,.28);border-radius:20px;padding:4px 11px;cursor:pointer;font-family:Inter;font-weight:700">+ Novo membro</button>
         </div>
         <div id="escala-r" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
-        <div id="novo-mb-r" style="display:none;background:var(--s3);border:1px solid rgba(124,92,252,.2);border-radius:var(--rs);padding:12px;margin-bottom:10px">
+        <div id="novo-mb-r" style="display:none;background:var(--s3);border:1px solid rgba(200,180,120,.2);border-radius:var(--rs);padding:12px;margin-bottom:10px">
           <div style="font-size:11px;font-weight:700;color:var(--vio2);margin-bottom:9px">Cadastrar membro rapidamente</div>
           <div class="r2">
             <div class="fg"><label>Nome</label><input id="nm-r-nome" placeholder="ex: João Brito"></div>
@@ -760,10 +716,10 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 <!-- EQUIPE -->
 <div id="v-equipe" class="view">
   <div class="itabs">
-    <button class="itab on" onclick="sub('el',this)">👥 Equipe</button>
+    <button class="itab on" onclick="sub('el',this)"> Equipe</button>
     <button class="itab"    onclick="sub('ea',this)">+ Membro</button>
-    <button class="itab"    onclick="sub('ep',this)">💸 Pagamentos</button>
-    <button class="itab"    onclick="sub('ec',this)">🧮 Calcular</button>
+    <button class="itab"    onclick="sub('ep',this)"> Pagamentos</button>
+    <button class="itab"    onclick="sub('ec',this)"> Calcular</button>
   </div>
   <div id="el">
     <div id="lista-eq"></div>
@@ -819,7 +775,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   </div>
   <div id="ec" style="display:none">
     <div class="card glass">
-      <div style="font-size:14px;font-weight:700;margin-bottom:11px">🧮 Simulador de divisão por show</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:11px"> Simulador de divisão por show</div>
       <div class="notice info">Informe o valor bruto do show para ver quanto cada membro recebe.</div>
       <div class="fg"><label>Valor bruto do show (R$)</label>
         <input id="cnota" type="number" placeholder="ex: 3000,00" inputmode="decimal" oninput="calcNota()">
@@ -832,14 +788,14 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 <!-- FINANCEIRO -->
 <div id="v-fin" class="view">
   <div class="itabs">
-    <button class="itab on" onclick="sub('fm',this)">💬 Por mensagem</button>
+    <button class="itab on" onclick="sub('fm',this)">Por mensagem</button>
     <button class="itab"    onclick="sub('fma',this)">Manual</button>
     <button class="itab"    onclick="sub('fd',this)">Dívidas</button>
-    <button class="itab"    onclick="sub('fs',this)">💚 Saúde</button>
+    <button class="itab"    onclick="sub('fs',this)"> Saúde</button>
   </div>
   <div id="fm">
     <div class="card glass">
-      <div style="font-size:15px;font-weight:700;margin-bottom:6px">💬 Cole seus débitos aqui</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px">Cole seus débitos aqui</div>
       <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6">Qualquer formato — um por linha ou separado por vírgula:<br><em style="color:var(--vio2)">"Aluguel 1500, Gasolina 250, Luz 180"</em></div>
       <textarea id="msgtxt" rows="6" placeholder="Aluguel 1500&#10;Gasolina 250&#10;Cartão Nubank 380&#10;Luz 160&#10;Internet 99,90&#10;App distribuição 25"></textarea>
       <div class="sp"></div>
@@ -944,7 +900,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   </div>
   <div id="rel-body"></div>
   <div class="sp"></div>
-  <button class="btn wa" style="width:100%" onclick="waRel()">📲 Compartilhar no WhatsApp</button>
+  <button class="btn wa" style="width:100%" onclick="waRel()"> Compartilhar no WhatsApp</button>
 </div>
 
 <!-- VOZ -->
@@ -985,7 +941,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 
     <!-- Preview do show -->
     <div id="voz-prev" style="display:none"></div>
-    <button class="btn pri" id="voz-ok" style="display:none;margin-top:12px" onclick="salvarVoz()">✅ Confirmar e salvar show</button>
+    <button class="btn pri" id="voz-ok" style="display:none;margin-top:12px" onclick="salvarVoz()">Confirmar e salvar show</button>
     <button class="btn ghost" id="voz-refazer" style="display:none;margin-top:8px;font-size:13px" onclick="refazerVoz()">↻ Gravar novamente</button>
   </div>
 
@@ -1001,7 +957,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 <!-- CONTEÚDO -->
 <div id="v-dig" class="view">
   <div class="idea-box">
-    <div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:9px">💡 Ideia do dia</div>
+    <div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:9px"> Ideia do dia</div>
     <div id="ideia" style="font-size:14px;line-height:1.6"></div>
     <button class="btn ghost" style="margin-top:13px;width:auto;font-size:12px;padding:8px 16px" onclick="novaIdeia()">↻ Outra ideia</button>
   </div>
@@ -1016,7 +972,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 </main>
 
 <!-- MODAL EDITAR DÍVIDA -->
-<div id="div-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(5,11,24,.88);backdrop-filter:blur(12px);align-items:flex-end;justify-content:center;padding:0">
+<div id="div-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(5,5,7,.88);backdrop-filter:blur(12px);align-items:flex-end;justify-content:center;padding:0">
   <div style="background:var(--s2);border:1px solid var(--line2);border-top-left-radius:20px;border-top-right-radius:20px;padding:22px 18px 36px;width:100%;max-width:480px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
       <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800">Editar dívida</div>
@@ -1053,10 +1009,10 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 </div>
 
 <!-- MODAL EDITAR SHOW -->
-<div id="modal-show" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(5,11,24,.88);backdrop-filter:blur(12px);align-items:flex-end;justify-content:center">
+<div id="modal-show" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(5,5,7,.88);backdrop-filter:blur(12px);align-items:flex-end;justify-content:center">
   <div style="background:var(--s2);border:1px solid var(--line2);border-top-left-radius:20px;border-top-right-radius:20px;padding:22px 18px 36px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800">✏️ Editar show</div>
+      <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800">️ Editar show</div>
       <button onclick="fecharModalShow()" style="background:var(--s3);border:1px solid var(--line2);border-radius:50%;width:30px;height:30px;color:var(--t2);font-size:16px;cursor:pointer;font-family:Inter;display:flex;align-items:center;justify-content:center">×</button>
     </div>
     <input type="hidden" id="edit-show-id">
@@ -1077,7 +1033,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       </div>
     </div>
     <div class="fg"><label>Status</label>
-      <select id="es-status"><option value="agendado">📅 Agendado</option><option value="nf">📄 NF emitida</option><option value="recebido">✅ Recebido</option></select>
+      <select id="es-status"><option value="agendado">Agendado</option><option value="nf"> NF emitida</option><option value="recebido">Recebido</option></select>
     </div>
     <div class="fg"><label>Obs</label><input id="es-obs" placeholder="endereço, contato..."></div>
     <button class="btn pri" onclick="salvarEditShow()" style="margin-top:6px">Salvar alterações</button>
@@ -1087,10 +1043,10 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 </div>
 
 <!-- MODAL EDITAR LANÇAMENTO -->
-<div id="modal-fin" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(5,11,24,.88);backdrop-filter:blur(12px);align-items:flex-end;justify-content:center">
+<div id="modal-fin" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(5,5,7,.88);backdrop-filter:blur(12px);align-items:flex-end;justify-content:center">
   <div style="background:var(--s2);border:1px solid var(--line2);border-top-left-radius:20px;border-top-right-radius:20px;padding:22px 18px 36px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800">✏️ Editar lançamento</div>
+      <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800">️ Editar lançamento</div>
       <button onclick="fecharModalFin()" style="background:var(--s3);border:1px solid var(--line2);border-radius:50%;width:30px;height:30px;color:var(--t2);font-size:16px;cursor:pointer;font-family:Inter;display:flex;align-items:center;justify-content:center">×</button>
     </div>
     <input type="hidden" id="edit-fin-id">
@@ -1148,23 +1104,23 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 </nav>
 
 <!-- MORE MENU (slide-up) -->
-<div id="more-menu" style="display:none;position:fixed;bottom:60px;left:0;right:0;z-index:110;background:rgba(10,22,40,.97);backdrop-filter:blur(24px);border-top:1px solid var(--line);padding:16px 14px 20px">
+<div id="more-menu" style="display:none;position:fixed;bottom:60px;left:0;right:0;z-index:110;background:rgba(5,5,7,.97);backdrop-filter:blur(24px);border-top:1px solid var(--line);padding:16px 14px 20px">
   <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Mais opções</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
     <button onclick="goFromMore('equip')" style="background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
-      <div style="font-size:18px;margin-bottom:6px">🎛</div>
+      <div style="font-size:18px;margin-bottom:6px"></div>
       <div style="font-size:13px;font-weight:600">Equipamentos</div>
     </button>
     <button onclick="goFromMore('rel')" style="background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
-      <div style="font-size:18px;margin-bottom:6px">📊</div>
+      <div style="font-size:18px;margin-bottom:6px"></div>
       <div style="font-size:13px;font-weight:600">Relatório</div>
     </button>
     <button onclick="goFromMore('voz')" style="background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
-      <div style="font-size:18px;margin-bottom:6px">🎤</div>
+      <div style="font-size:18px;margin-bottom:6px"></div>
       <div style="font-size:13px;font-weight:600">Voz</div>
     </button>
     <button onclick="goFromMore('dig')" style="background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
-      <div style="font-size:18px;margin-bottom:6px">📱</div>
+      <div style="font-size:18px;margin-bottom:6px"></div>
       <div style="font-size:13px;font-weight:600">Conteúdo</div>
     </button>
   </div>
@@ -1243,7 +1199,7 @@ async function criarSenha(){
   if(ns!==cs){mostrarErroCriar('As senhas não coincidem');return;}
   const h=await hashSenha(ns);
   localStorage.setItem(SENHA_KEY,h);
-  toast('✅ Senha criada! Compartilhe com o marido.');
+  toast('Senha criada! Compartilhe com o marido.');
   entrarNoApp();
 }
 
@@ -1372,7 +1328,7 @@ async function atualizarApp(){
   if(btn){btn.style.transform='rotate(720deg)';setTimeout(()=>{btn.style.transition='none';btn.style.transform='';setTimeout(()=>btn.style.transition='transform .5s',50);},500);}
   syncUI(false,'sincronizando…');
   const pushed = await pullFromCloud();
-  if(pushed){ toast('✅ Dados atualizados!'); }
+  if(pushed){ toast('Dados atualizados!'); }
   else { toast('A reenviar dados locais…','err'); syncUI(false,'reenviando'); }
 }
 
@@ -1384,7 +1340,7 @@ async function carregarJB(){
   // 2. Trazer da nuvem apenas se não estiver desatualizada
   const pulled = await pullFromCloud();
   if(!pulled){ loadLocal(); syncUI(false,'offline — dados locais'); render(); return; }
-  syncUI(true,'online ✓');
+  syncUI(true,'online ');
   // 3. Polling a cada 20s
   clearInterval(_syncTimer);
   _syncTimer = setInterval(async()=>{
@@ -1461,7 +1417,7 @@ async function conectarJSONBin(){
     // Enviar os dados locais para a nuvem com retry automático
     await save();
     syncUI(true,'conectado');
-    toast(newBin ? '✅ Banco criado e conectado!' : '✅ Conectado ao banco existente!');
+    toast(newBin ? 'Banco criado e conectado!' : 'Conectado ao banco existente!');
     render();
     // Polling automático
     clearInterval(_syncTimer);
@@ -1583,7 +1539,7 @@ async function qaAdd(){
   DB.fin[id]={id,tipo:classSecao(nome,'desp'),valor:v,desc:nome,data:today(),cat:inferCat(nome),rec:classRec(nome),pgto,parc};
   await save();$('qa-txt').value='';
   const pgLabel={'pix':'Pix','dinheiro':'Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':`Crédito ${parc}x`};
-  toast('✅ '+nome+' — '+fmt(v)+(pgto?' · '+pgLabel[pgto]:''));render();
+  toast(''+nome+' — '+fmt(v)+(pgto?' · '+pgLabel[pgto]:''));render();
 }
 
 /* ═══════ SHOWS ═════════════════════════════════ */
@@ -1605,9 +1561,9 @@ function renderEscala(prefix){
   container.innerHTML=eq.map(m=>{
     const sel=_escalaTemp[prefix][m.id];
     const vShow=m.perc>0&&valor?+(valor*(m.perc/100)).toFixed(2):m.val;
-    return`<div style="display:flex;align-items:center;gap:10px;background:${sel?'rgba(34,211,160,.06)':'var(--s3)'};border:1px solid ${sel?'rgba(34,211,160,.2)':'var(--line)'};border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .15s" onclick="toggleMembro('${prefix}','${m.id}')">
+    return`<div style="display:flex;align-items:center;gap:10px;background:${sel?'rgba(217,192,136,.06)':'var(--s3)'};border:1px solid ${sel?'rgba(217,192,136,.2)':'var(--line)'};border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .15s" onclick="toggleMembro('${prefix}','${m.id}')">
       <div style="width:22px;height:22px;border-radius:6px;border:2px solid ${sel?'var(--teal)':'var(--line2)'};background:${sel?'var(--teal)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s">
-        ${sel?'<svg viewBox="0 0 12 10" fill="none" style="width:12px"><path d="M1 5l3.5 3.5L11 1" stroke="#050b18" stroke-width="2" stroke-linecap="round"/></svg>':''}
+        ${sel?'<svg viewBox="0 0 12 10" fill="none" style="width:12px"><path d="M1 5l3.5 3.5L11 1" stroke="#050507" stroke-width="2" stroke-linecap="round"/></svg>':''}
       </div>
       <div style="flex:1">
         <div style="font-size:13px;font-weight:600;color:${sel?'var(--tx)':'var(--t2)'}">${m.nome}</div>
@@ -1663,7 +1619,7 @@ async function salvarNovoMembroEscala(prefix){
   $(('nm-'+prefix+'-nome')).value='';$(('nm-'+prefix+'-val')).value='';$(('nm-'+prefix+'-wa')).value='';
   $('novo-mb-'+prefix).style.display='none';
   renderEscala(prefix);
-  toast('✅ '+nome+' adicionado e escalado!');
+  toast(''+nome+' adicionado e escalado!');
 }
 
 // Inicializar escalação quando abre a aba
@@ -1687,7 +1643,7 @@ async function addShow(){
    await save();
   $('sn').value='';$('sv').value='';$('sobs').value='';
   _escalaTemp['s']={};renderEscala('s');
-  toast('✅ Show adicionado!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
+  toast('Show adicionado!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
 async function addSerie(){
   const nome=$('rn').value.trim(),inicio=$('ri').value;
@@ -1700,25 +1656,27 @@ async function addSerie(){
     return{mbId:id,nome:m.nome,fn:m.fn,val:vShow};
   });
   const id=uid();
-  DB.series[id]={id,nome,dia:+$('rd').value,hora:$('rh').value||'21:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),inicio,fim:$('rf').value||'',tipo:$('rtp').value,ferias,cancelados:[],escalacao};
+  DB.series[id]={id,nome,dia:+$('rd').value,hora:$('rh').value||'21:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo:+($('rp')?.value||30),inicio,fim:$('rf').value||'',tipo:$('rtp').value,ferias,cancelados:[],escalacao};
    gerarSerie(id); await save();
   $('rn').value='';$('rv').value='';$('ri').value='';$('rf').value='';
   document.querySelectorAll('#mferias input').forEach(c=>c.checked=false);
   _escalaTemp['r']={};renderEscala('r');
-  toast('✅ Série criada!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
+  toast('Série criada!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
 function gerarSerie(sid){
   const s=DB.series[sid];if(!s)return;
   Object.keys(DB.shows).forEach(k=>{if(DB.shows[k].serieId===sid&&DB.shows[k].data>=today()&&DB.shows[k].status==='agendado')delete DB.shows[k];});
   const fim=s.fim?new Date(s.fim+'T12:00'):(()=>{const d=new Date();d.setMonth(d.getMonth()+6);return d;})();
   let cur=new Date(s.inicio+'T12:00');
+  if(isNaN(cur.getTime())){console.warn('Série com data inicial inválida',s);return;}
   while(cur.getDay()!==s.dia)cur.setDate(cur.getDate()+1);
   let n=0;
   while(cur<=fim&&n<200){
     const ds=cur.toISOString().slice(0,10);
     if(!s.ferias.includes(cur.getMonth())&&!s.cancelados.includes(ds)){
       const id=uid();
-      DB.shows[id]={id,nome:s.nome,data:ds,hora:s.hora,valor:s.valor,liq:s.liq,imp:s.imp,prazo:s.prazo,tipo:s.tipo,obs:'',status:'agendado',recData:addDays(ds,s.prazo),serie:true,serieId:sid,falta:[]};
+      const pz=isNaN(+s.prazo)?30:+s.prazo;
+      DB.shows[id]={id,nome:s.nome,data:ds,hora:s.hora,valor:s.valor,liq:s.liq,imp:s.imp,prazo:pz,tipo:s.tipo,obs:'',status:'agendado',recData:addDays(ds,pz),serie:true,serieId:sid,falta:[]};
     }
     cur.setDate(cur.getDate()+7);n++;
   }
@@ -1731,15 +1689,15 @@ async function cancelarOc(showId){
   if(s){s.cancelados=s.cancelados||[];s.cancelados.push(sh.data);}
   DB.shows[showId].status='cancelado';await save();render();
 }
-async function delShow(id){if(!confirm('Remover show?'))return;delete DB.shows[id];await save();render();toast('🗑 Show removido');}
+async function delShow(id){if(!confirm('Remover show?'))return;delete DB.shows[id];await save();render();toast('Show removido');}
 async function delSerie(id){
   if(!confirm('Excluir série e shows futuros?'))return;
   Object.keys(DB.shows).forEach(k=>{if(DB.shows[k].serieId===id&&DB.shows[k].data>=today())delete DB.shows[k];});
-  delete DB.series[id];await save();render();toast('🗑 Série removida');
+  delete DB.series[id];await save();render();toast('Série removida');
 }
 function waEquipe(showId){
   const sh=DB.shows[showId];if(!sh)return;
-  const msg=`🎵 *Luah Produção*\n\n📍 *${sh.nome}*\n📅 ${fmtD(sh.data)} às ${sh.hora}\nTipo: ${sh.tipo}${sh.obs?'\n📝 '+sh.obs:''}\n\n✅ Confirme sua presença!`;
+  const msg=`*Luah Produção*\n\n*${sh.nome}*\n${fmtD(sh.data)} às ${sh.hora}\nTipo: ${sh.tipo}${sh.obs?'\n'+sh.obs:''}\n\nConfirme sua presença!`;
   const eq=arr(DB.equipe);
   if(eq.length&&eq[0].wa)window.open(`https://wa.me/55${eq[0].wa.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`,'_blank');
   else{navigator.clipboard?.writeText(msg);toast('Mensagem copiada! Cole no WhatsApp.');}
@@ -1752,9 +1710,9 @@ async function addMembro(){
   const nome=$('mn').value.trim();if(!nome){toast('Informe o nome','err');return;}
   const id=uid();
   DB.equipe[id]={id,nome,fn:$('mf').value,val:+$('mv').value||0,perc:+$('mp').value||0,ref:+$('mref').value||0,pro:+$('mpro').value||0,proP:+$('mproP').value||0,wa:$('mwa').value.trim()};
-   await save();['mn','mv','mp','mref','mpro','mproP','mwa'].forEach(i=>$(i).value='');toast('✅ Membro adicionado!');render();
+   await save();['mn','mv','mp','mref','mpro','mproP','mwa'].forEach(i=>$(i).value='');toast('Membro adicionado!');render();
 }
-async function delMembro(id){if(!confirm('Remover?'))return;delete DB.equipe[id];await save();render();toast('🗑 Membro removido');}
+async function delMembro(id){if(!confirm('Remover?'))return;delete DB.equipe[id];await save();render();toast('Membro removido');}
 async function addPag(){
   const mbId=$('pmb').value,val=+$('pv').value||0;
   if(!mbId||!val){toast('Selecione membro e valor','err');return;}
@@ -1763,7 +1721,7 @@ async function addPag(){
   const showNome=showRef&&DB.shows[showRef]?DB.shows[showRef].nome:'';
   const id=uid();
   DB.pags[id]={id,mbId,nome:mb.nome||'?',fn:mb.fn||'',val,dt:$('pdt').value||today(),ref:$('pref').value,showRef,showNome,obs:$('pobs')?.value.trim()||showNome};
-  await save();$('pv').value='';if($('pobs'))$('pobs').value='';toast('✅ Pagamento registrado');render();
+  await save();$('pv').value='';if($('pobs'))$('pobs').value='';toast('Pagamento registrado');render();
 }
 function calcNota(){
   const nota=+$('cnota').value||0;
@@ -1833,9 +1791,9 @@ function detectPgto(txt){
 }
 function pgtoTag(pgto,parc){
   if(!pgto)return'';
-  const labels={'pix':'Pix','dinheiro':'💵 Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':'Crédito '+(parc||'')+'x'};
+  const labels={'pix':'Pix','dinheiro':' Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':'Crédito '+(parc||'')+'x'};
   const colors={'pix':'var(--teal)','dinheiro':'var(--gold)','debito':'var(--sky)','credito-vista':'var(--vio2)','credito-parcelado':'var(--vio2)'};
-  return`<span style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(124,92,252,.12);color:${colors[pgto]||'var(--t2)'};border:1px solid rgba(124,92,252,.2)">${labels[pgto]||pgto}</span>`;
+  return`<span style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(200,180,120,.12);color:${colors[pgto]||'var(--t2)'};border:1px solid rgba(200,180,120,.2)">${labels[pgto]||pgto}</span>`;
 }
 function processarMsg(){
   const txt=$('msgtxt').value.trim(),def=$('mtp').value,data=$('mdt').value||today();
@@ -1867,13 +1825,13 @@ function processarMsg(){
   $('msg-prev').innerHTML=`
     <div class="card" style="margin-top:10px">
       <div style="font-size:13px;font-weight:700;margin-bottom:11px;display:flex;justify-content:space-between">${itens.length} débitos identificados<span style="color:var(--rose)">${fmt(tF+tV)}</span></div>
-      ${grupo(fix,'Custos Fixos','var(--rose)','🔒')}
-      ${grupo(vari,'Custos Variáveis','var(--amber)','📊')}
+      ${grupo(fix,'Custos Fixos','var(--rose)','')}
+      ${grupo(vari,'Custos Variáveis','var(--amber)','')}
       <div class="g2" style="margin:11px 0 13px">
-        <div style="background:rgba(240,92,122,.08);border:1px solid rgba(240,92,122,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--rose);font-weight:700;text-transform:uppercase">🔒 Fixos</div><div style="font-size:18px;font-weight:800;color:var(--rose)">${fmt(tF)}</div></div>
-        <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase">📊 Variáveis</div><div style="font-size:18px;font-weight:800;color:var(--amber)">${fmt(tV)}</div></div>
+        <div style="background:rgba(176,98,80,.08);border:1px solid rgba(176,98,80,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--rose);font-weight:700;text-transform:uppercase"> Fixos</div><div style="font-size:18px;font-weight:800;color:var(--rose)">${fmt(tF)}</div></div>
+        <div style="background:rgba(217,192,136,.08);border:1px solid rgba(217,192,136,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase"> Variáveis</div><div style="font-size:18px;font-weight:800;color:var(--amber)">${fmt(tV)}</div></div>
       </div>
-      <button class="btn pri" onclick="confirmarMsg()">✅ Salvar ${itens.length} débitos</button>
+      <button class="btn pri" onclick="confirmarMsg()">Salvar ${itens.length} débitos</button>
       <div class="sp"></div>
       <button class="btn ghost" onclick="$('msg-prev').innerHTML=''">Cancelar</button>
     </div>`;
@@ -1883,7 +1841,7 @@ async function confirmarMsg(){
   itens.forEach(it=>{const id=uid();DB.fin[id]={id,tipo:it.tipo,valor:it.valor,desc:it.nome,data:it.data,cat:it.cat,rec:it.rec,pgto:it.pgto||'',parc:it.parc||null};});
   const n=itens.length;window._pend=null;
    await save();render();$('msg-prev').innerHTML='';$('msgtxt').value='';
-  toast(`✅ ${n} débitos salvos!`);
+  toast(`${n} débitos salvos!`);
 }
 async function addFin(){
   const tipo=$('ftp').value,valor=+$('fv').value||0,desc=$('fdesc').value.trim();
@@ -1894,22 +1852,22 @@ async function addFin(){
   const id=uid();
   DB.fin[id]={id,tipo,valor,desc,data:$('fdt').value||today(),cat,rec:classRec(desc),pgto,parc};
   await save();$('fdesc').value='';$('fv').value='';if($('fpgto'))$('fpgto').value='';if($('fparc'))$('fparc').value='';
-  toast('✅ Lançamento salvo');render();
+  toast('Lançamento salvo');render();
 }
-async function delFin(id){if(!confirm('Remover?'))return;delete DB.fin[id];await save();render();toast('🗑 Lançamento removido');}
+async function delFin(id){if(!confirm('Remover?'))return;delete DB.fin[id];await save();render();toast('Lançamento removido');}
 async function addDiv(){
   const nome=$('dvn').value.trim(),total=+$('dvt').value||0;
   if(!nome||!total){toast('Preencha nome e valor','err');return;}
   const id=uid();
   DB.div[id]={id,nome,cat:$('dvcat').value,total,pago:+$('dvp').value||0,pri:$('dvpri').value};
-  await save();['dvn','dvt','dvp'].forEach(i=>$(i).value='');toast('✅ Dívida cadastrada');render();
+  await save();['dvn','dvt','dvp'].forEach(i=>$(i).value='');toast('Dívida cadastrada');render();
 }
 async function abaterDiv(id){
   const v=parseFloat($('ab-'+id).value)||0;if(!v)return;
   DB.div[id].pago=Math.min(DB.div[id].pago+v,DB.div[id].total);
-  await save();toast('✅ Pagamento registrado');render();
+  await save();toast('Pagamento registrado');render();
 }
-async function delDiv(id){if(!confirm('Remover?'))return;delete DB.div[id];await save();render();toast('🗑 Dívida removida');}
+async function delDiv(id){if(!confirm('Remover?'))return;delete DB.div[id];await save();render();toast('Dívida removida');}
 
 function abrirEditDiv(id){
   const d=DB.div[id];if(!d)return;
@@ -1948,7 +1906,7 @@ async function salvarEditDiv(){
     pri:$('ediv-pri').value,
     obs:$('ediv-obs').value.trim()
   };
-   await save();fecharEditDiv();toast('✅ Dívida atualizada');render();
+   await save();fecharEditDiv();toast('Dívida atualizada');render();
 }
 
 /* ═══════ EQUIPAMENTOS ══════════════════════════ */
@@ -1956,13 +1914,13 @@ async function addEquip(){
   const nome=$('eqn').value.trim(),preco=+$('eqp').value||0;
   if(!nome||!preco){toast('Nome e preço obrigatórios','err');return;}
   const id=uid();DB.equip[id]={id,nome,preco,pri:$('eqpri').value,eco:0};
-   await save();$('eqn').value='';$('eqp').value='';toast('✅ Equipamento adicionado');render();
+   await save();$('eqn').value='';$('eqp').value='';toast('Equipamento adicionado');render();
 }
 async function addEco(id){
   const v=parseFloat($('eco-'+id).value)||0;if(!v)return;
-   DB.equip[id].eco=Math.min(DB.equip[id].eco+v,DB.equip[id].preco); await save();toast('✅ Valor adicionado ao fundo');render();
+   DB.equip[id].eco=Math.min(DB.equip[id].eco+v,DB.equip[id].preco); await save();toast('Valor adicionado ao fundo');render();
 }
-async function delEquip(id){if(!confirm('Remover?'))return;delete DB.equip[id];await save();render();toast('🗑 Equipamento removido');}
+async function delEquip(id){if(!confirm('Remover?'))return;delete DB.equip[id];await save();render();toast('Equipamento removido');}
 async function saveMedia(){DB.meta.mediaShow=+$('eqmed').value||0;await save();}
 
 /* ═══════ VOZ ═══════════════════════════════════ */
@@ -2061,7 +2019,7 @@ Responda SOMENTE com o JSON, sem mais nada.`},
     const show = JSON.parse(clean);
     $('voz-loading').style.display='none';
     $('voz-txt').style.display='block';
-    $('voz-txt').textContent='🎙 Áudio processado com sucesso';
+    $('voz-txt').textContent=' Áudio processado com sucesso';
     montarPreviewVoz(show);
   }catch(err){
     $('voz-loading').style.display='none';
@@ -2110,7 +2068,7 @@ function montarPreviewVoz(show){
   const c=falta.length?'var(--amber)':'var(--teal)';
   $('voz-prev').style.display='block';
   $('voz-prev').innerHTML=`<div class="card" style="margin-top:11px;border-color:${c}33;text-align:left">
-    <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:${c}">${falta.length?'⚠️ Show captado (dados incompletos)':'✅ Show identificado'}</div>
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:${c}">${falta.length?'️ ':'Show identificado'}</div>
     <div style="font-size:13px;color:var(--t2);line-height:2.1">
       <b style="color:var(--tx)">Nome:</b> ${nF}<br>
       <b style="color:var(--tx)">Data:</b> ${fmtD(data)} às ${show.hora||'20:00'}<br>
@@ -2147,7 +2105,7 @@ function parseVoz(txt){
   const c=falta.length?'var(--amber)':'var(--teal)';
   $('voz-prev').style.display='block';
   $('voz-prev').innerHTML=`<div class="card" style="margin-top:11px;border-color:${c}33">
-    <div style="font-size:13px;font-weight:700;margin-bottom:7px;color:${c}">${falta.length?'⚠️ Show captado (incompleto)':'✅ Show identificado'}</div>
+    <div style="font-size:13px;font-weight:700;margin-bottom:7px;color:${c}">${falta.length?'Show captado (incompleto)':'Show identificado'}</div>
     <div style="font-size:13px;color:var(--t2);line-height:2"><b style="color:var(--tx)">Nome:</b> ${nF}<br><b style="color:var(--tx)">Data:</b> ${fmtD(data)}<br><b style="color:var(--tx)">Valor:</b> ${valor?fmt(valor):'<span style="color:var(--amber)">não informado</span>'}<br>${valor?`<b style="color:var(--tx)">Líquido:</b> <span style="color:var(--teal)">${fmt(vozData.liq)}</span><br>`:''}<b style="color:var(--tx)">Recebimento:</b> ${fmtD(vozData.recData)}</div>
     ${falta.length?`<div class="notice warn" style="margin-top:8px">Faltando: ${falta.join(', ')} — complete depois na aba Shows</div>`:''}
   </div>`;
@@ -2157,7 +2115,7 @@ async function salvarVoz(){
   if(!vozData)return;
    DB.shows[vozData.id]=vozData; await save();render();
   $('voz-txt').style.display='none';$('voz-prev').style.display='none';$('voz-ok').style.display='none';
-  vozData=null;toast('✅ Show salvo!');
+  vozData=null;toast('Show salvo!');
 }
 
 /* ═══════ RELATÓRIO ═════════════════════════════ */
@@ -2223,7 +2181,7 @@ function renderRel(){
 
   set('rel-body',`
     <div class="card">
-      <div class="sl" style="margin-top:0">🎵 Shows — ${label}</div>
+      <div class="sl" style="margin-top:0">Shows — ${label}</div>
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Quantidade</span><b style="color:var(--tx)">${showsP.length}</b></div>
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Receita bruta</span><b>${fmt(tBruto)}</b></div>
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Imposto 6%</span><b style="color:var(--rose)">-${fmt(tImp)}</b></div>
@@ -2232,7 +2190,7 @@ function renderRel(){
     </div>
 
     <div class="card">
-      <div class="sl" style="margin-top:0">💰 Financeiro — ${label}</div>
+      <div class="sl" style="margin-top:0"> Financeiro — ${label}</div>
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Outras receitas</span><b style="color:var(--teal)">+${fmt(tRec)}</b></div>
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Despesas empresa</span><b style="color:var(--rose)">-${fmt(tDesp)}</b></div>
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Despesas casa</span><b style="color:var(--rose)">-${fmt(tCasa)}</b></div>
@@ -2240,28 +2198,28 @@ function renderRel(){
       <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700"><span>Resultado</span><b style="color:${res>=0?'var(--teal)':'var(--rose)'}">${fmt(res)}</b></div>
     </div>
 
-    ${pagDetalhe?`<div class="card"><div class="sl" style="margin-top:0">👥 Pagamentos por membro — ${label}</div>${pagDetalhe}</div>`:''}
+    ${pagDetalhe?`<div class="card"><div class="sl" style="margin-top:0"> Pagamentos por membro — ${label}</div>${pagDetalhe}</div>`:''}
 
-    ${prevDetalhe?`<div class="card"><div class="sl" style="margin-top:0">📅 Previsão de entradas (próximos meses)</div>${prevDetalhe}<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700">Total previsto<b style="color:var(--gold)">${fmt(Object.values(prevMes).reduce((a,b)=>a+b,0))}</b></div></div>`:''}
+    ${prevDetalhe?`<div class="card"><div class="sl" style="margin-top:0">Previsão de entradas (próximos meses)</div>${prevDetalhe}<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700">Total previsto<b style="color:var(--gold)">${fmt(Object.values(prevMes).reduce((a,b)=>a+b,0))}</b></div></div>`:''}
 
     ${(pendShows.length||pendNFs.length)?`<div class="card"><div class="sl" style="margin-top:0">⏳ Próximos recebimentos (60 dias)</div>
       ${pendShows.map(s=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)">${fmtD(s.recData)} · ${s.nome}<b style="color:var(--gold)">${fmt(s.liq)}</b></div>`).join('')}
       ${pendNFs.map(n=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)">${fmtD(n.dtRecebimento)} · NF ${n.mesRef}<b style="color:var(--gold)">${fmt(n.liq)}</b></div>`).join('')}
     </div>`:''}
 
-    ${prosPend.length?`<div class="card"><div class="sl" style="margin-top:0">💸 Pró-labore mensal (equipe)</div>
+    ${prosPend.length?`<div class="card"><div class="sl" style="margin-top:0"> Pró-labore mensal (equipe)</div>
       ${prosPend.map(m=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)">${m.nome} · ${m.fn}<b style="color:var(--amber)">${fmt(m.pro)}/mês</b></div>`).join('')}
     </div>`:''}
 
     <div class="card">
-      <div class="sl" style="margin-top:0">💳 Dívidas em aberto</div>
-      ${arr(DB.div).filter(d=>d.total-d.pago>0).map(d=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)">${d.nome} <span class="bdg ${{alta:'r',media:'a',baixa:'x'}[d.pri]}" style="font-size:9px">${d.pri}</span><b style="color:var(--rose)">${fmt(d.total-d.pago)}</b></div>`).join('')||'<div style="padding:7px 0;font-size:13px;color:var(--teal)">✅ Nenhuma dívida em aberto</div>'}
+      <div class="sl" style="margin-top:0"> Dívidas em aberto</div>
+      ${arr(DB.div).filter(d=>d.total-d.pago>0).map(d=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)">${d.nome} <span class="bdg ${{alta:'r',media:'a',baixa:'x'}[d.pri]}" style="font-size:9px">${d.pri}</span><b style="color:var(--rose)">${fmt(d.total-d.pago)}</b></div>`).join('')||'<div style="padding:7px 0;font-size:13px;color:var(--teal)">Nenhuma dívida em aberto</div>'}
       <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700">Total em aberto<b style="color:var(--rose)">${fmt(tDiv)}</b></div>
     </div>`);
 }
 function waRel(){
   const r=calcRel();
-  const txt=`🎶 *LUAH PRODUÇÃO — ${r.label}*\n\n🎵 Shows: ${r.qt} | Bruto: ${fmt(r.tBruto)} | Imposto: -${fmt(r.tImp)}\n✅ Líquido: ${fmt(r.tLiq)}\n\n💰 +${fmt(r.tRec)} outras receitas\n-${fmt(r.tDesp)} empresa | -${fmt(r.tCasa)} casa | -${fmt(r.tPag)} equipe\n\n💵 *RESULTADO: ${fmt(r.res)}*\n📌 Dívidas: ${fmt(r.tDiv)}`;
+  const txt=` *LUAH PRODUÇÃO — ${r.label}*\n\nShows: ${r.qt} | Bruto: ${fmt(r.tBruto)} | Imposto: -${fmt(r.tImp)}\nLíquido: ${fmt(r.tLiq)}\n\n +${fmt(r.tRec)} outras receitas\n-${fmt(r.tDesp)} empresa | -${fmt(r.tCasa)} casa | -${fmt(r.tPag)} equipe\n\n *RESULTADO: ${fmt(r.res)}*\n Dívidas: ${fmt(r.tDiv)}`;
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
 }
 
@@ -2307,29 +2265,29 @@ function renderSaude(){
   if(divOrd.some(d=>d.pri==='alta'))al.push({c:'var(--rose)',t:'Há dívidas de <b>prioridade alta</b> — foque nelas primeiro.'});
   score=Math.max(0,score);
   const sc=score>=75?'var(--teal)':score>=50?'var(--amber)':'var(--rose)';
-  const sl=score>=75?'Boa 💚':score>=50?'Atenção ⚠️':'Crítica 🔴';
+  const sl=score>=75?'Boa ':score>=50?'Atenção ️':'Crítica ';
 
   // Sugestões
   const di=[];
-  if(pF>35)di.push('✂️ Revise contratos fixos. R$ 50/mês a menos = R$ 600/ano.');
-  if(menorDiv)di.push(`🎯 <b>Bola de neve:</b> quite primeiro <b>${menorDiv.nome}</b> (${fmt(menorDiv.total-menorDiv.pago)}) — vitória rápida libera fôlego.`);
-  if(maiorDiv&&maiorDiv.id!==menorDiv?.id)di.push(`💥 <b>Avalanche:</b> ou quite <b>${maiorDiv.nome}</b> (${fmt(maiorDiv.total-maiorDiv.pago)}) — a maior gera mais juros.`);
-  if(saldo>0)di.push(`🏦 Separe <b>${fmt(recT*.1)}</b>/mês (10%) em poupança — reserva de emergência.`);
-  if(tV>0)di.push(`📉 Variáveis em ${fmt(tV)}. Reduzir 15% = <b>${fmt(tV*.15)}</b> a mais por mês.`);
-  if(shows.length<4)di.push('🎵 Menos de 4 shows este mês — prospecte novos locais!');
-  di.push('📱 Músicos com presença digital recebem 40% mais propostas espontâneas.');
+  if(pF>35)di.push('️ Revise contratos fixos. R$ 50/mês a menos = R$ 600/ano.');
+  if(menorDiv)di.push(` <b>Bola de neve:</b> quite primeiro <b>${menorDiv.nome}</b> (${fmt(menorDiv.total-menorDiv.pago)}) — vitória rápida libera fôlego.`);
+  if(maiorDiv&&maiorDiv.id!==menorDiv?.id)di.push(` <b>Avalanche:</b> ou quite <b>${maiorDiv.nome}</b> (${fmt(maiorDiv.total-maiorDiv.pago)}) — a maior gera mais juros.`);
+  if(saldo>0)di.push(` Separe <b>${fmt(recT*.1)}</b>/mês (10%) em poupança — reserva de emergência.`);
+  if(tV>0)di.push(` Variáveis em ${fmt(tV)}. Reduzir 15% = <b>${fmt(tV*.15)}</b> a mais por mês.`);
+  if(shows.length<4)di.push('Menos de 4 shows este mês — prospecte novos locais!');
+  di.push(' Músicos com presença digital recebem 40% mais propostas espontâneas.');
 
   // Card de cada dívida
   const divCard=d=>{
     const rest=d.total-d.pago,perc=Math.round(d.pago/d.total*100);
     const ns=DB.meta?.mediaShow>0?Math.ceil(rest/DB.meta.mediaShow):null;
     const pc={alta:'re',media:'am',baixa:'t3'}[d.pri]||'t3';
-    const pl={alta:'🔴 Alta',media:'🟡 Média',baixa:'🟢 Baixa'}[d.pri]||d.pri;
+    const pl={alta:' Alta',media:' Média',baixa:' Baixa'}[d.pri]||d.pri;
     return`<div style="background:var(--s3);border:1px solid var(--line2);border-left:3px solid var(--${pc});border-radius:var(--rs);padding:12px 13px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
         <div>
           <div style="font-size:14px;font-weight:700;color:var(--tx)">${d.nome}</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px">${d.cat==='empresa'?'🏢 Empresa':'🏠 Casa'} · ${pl}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${d.cat==='empresa'?' Empresa':' Casa'} · ${pl}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:16px;font-weight:800;color:var(--rose)">${fmt(rest)}</div>
@@ -2343,7 +2301,7 @@ function renderSaude(){
       </div>
       <div style="display:flex;gap:7px;margin-top:10px">
         <input type="number" id="qs-${d.id}" placeholder="Registrar pagamento (R$)" inputmode="decimal" style="flex:1;font-size:13px">
-        <button style="background:var(--teal);color:#07101f;border:none;border-radius:var(--rs);padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer" onclick="pagarDivSaude('${d.id}')">✓ Pagar</button>
+        <button style="background:var(--teal);color:#0a0a0d;border:none;border-radius:var(--rs);padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer" onclick="pagarDivSaude('${d.id}')"> Pagar</button>
       </div>
     </div>`;
   };
@@ -2367,51 +2325,51 @@ function renderSaude(){
     ${al.length?`<div class="card">${al.map(a=>`<div style="display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;line-height:1.5;align-items:flex-start"><span style="color:${a.c};font-size:7px;margin-top:6px">●</span><span style="color:var(--t2)">${a.t}</span></div>`).join('')}</div>`:''}
 
     ${tDiv>0?`
-    <div class="card" style="border-color:rgba(240,92,122,.3)">
-      <div class="sl" style="margin-top:0">💳 Dívidas em aberto — impacto no score: <span style="color:var(--rose)">-${divPenalty} pts</span></div>
+    <div class="card" style="border-color:rgba(176,98,80,.3)">
+      <div class="sl" style="margin-top:0"> Dívidas em aberto — impacto no score: <span style="color:var(--rose)">-${divPenalty} pts</span></div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:13px">
-        <div style="background:rgba(240,92,122,.08);border:1px solid rgba(240,92,122,.18);border-radius:var(--rs);padding:10px;text-align:center">
+        <div style="background:rgba(176,98,80,.08);border:1px solid rgba(176,98,80,.18);border-radius:var(--rs);padding:10px;text-align:center">
           <div style="font-size:9px;color:var(--rose);font-weight:700;text-transform:uppercase;margin-bottom:3px">Total</div>
           <div style="font-size:15px;font-weight:800;color:var(--rose)">${fmt(tDiv)}</div>
         </div>
-        <div style="background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.15);border-radius:var(--rs);padding:10px;text-align:center">
+        <div style="background:rgba(217,192,136,.06);border:1px solid rgba(217,192,136,.15);border-radius:var(--rs);padding:10px;text-align:center">
           <div style="font-size:9px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Empresa</div>
           <div style="font-size:15px;font-weight:800;color:var(--amber)">${fmt(tDivEmp)}</div>
         </div>
-        <div style="background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.15);border-radius:var(--rs);padding:10px;text-align:center">
+        <div style="background:rgba(217,192,136,.06);border:1px solid rgba(217,192,136,.15);border-radius:var(--rs);padding:10px;text-align:center">
           <div style="font-size:9px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Casa</div>
           <div style="font-size:15px;font-weight:800;color:var(--amber)">${fmt(tDivCas)}</div>
         </div>
       </div>
       ${mesesQ?`<div style="background:rgba(155,126,248,.08);border:1px solid rgba(155,126,248,.2);border-radius:var(--rs);padding:10px 12px;margin-bottom:13px;font-size:12px;color:var(--vio);line-height:1.6">
-        📅 Pagando <b>${fmt(verbaMes)}/mês</b> (30% do saldo disponível) → dívidas quitadas em <b>~${mesesQ} ${mesesQ===1?'mês':'meses'}</b>.<br>
+        Pagando <b>${fmt(verbaMes)}/mês</b> (30% do saldo disponível) → dívidas quitadas em <b>~${mesesQ} ${mesesQ===1?'mês':'meses'}</b>.<br>
         <span style="color:var(--t3)">Ao quitar tudo, seu score sobe <b style="color:var(--vio)">+${divPenalty} pts</b>.</span>
       </div>`:''}
       <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px">Por prioridade — registre pagamentos aqui:</div>
       ${divOrd.map(divCard).join('')}
     </div>`:`
-    <div class="card" style="border-color:rgba(34,211,160,.2)">
+    <div class="card" style="border-color:rgba(217,192,136,.2)">
       <div style="display:flex;align-items:center;gap:12px;padding:4px 0">
-        <div style="font-size:28px">🎉</div>
+        <div style="font-size:28px"></div>
         <div><div style="font-size:14px;font-weight:700;color:var(--teal)">Sem dívidas em aberto!</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Continue assim — foque em construir sua reserva de emergência.</div></div>
       </div>
     </div>`}
 
     <div class="card">
-      <div class="sl" style="margin-top:0">📊 Composição das despesas</div>
+      <div class="sl" style="margin-top:0"> Composição das despesas</div>
       <div class="g2">
-        <div style="background:rgba(240,92,122,.07);border:1px solid rgba(240,92,122,.18);border-radius:var(--rs);padding:12px;text-align:center"><div style="font-size:10px;color:var(--rose);font-weight:700;text-transform:uppercase;margin-bottom:4px">🔒 Fixos</div><div style="font-size:19px;font-weight:800;color:var(--rose)">${fmt(tF)}</div><div style="font-size:11px;color:var(--t3)">${pF}% da receita</div></div>
-        <div style="background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.18);border-radius:var(--rs);padding:12px;text-align:center"><div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase;margin-bottom:4px">📊 Variáveis</div><div style="font-size:19px;font-weight:800;color:var(--amber)">${fmt(tV)}</div><div style="font-size:11px;color:var(--t3)">${pV}% da receita</div></div>
+        <div style="background:rgba(176,98,80,.07);border:1px solid rgba(176,98,80,.18);border-radius:var(--rs);padding:12px;text-align:center"><div style="font-size:10px;color:var(--rose);font-weight:700;text-transform:uppercase;margin-bottom:4px"> Fixos</div><div style="font-size:19px;font-weight:800;color:var(--rose)">${fmt(tF)}</div><div style="font-size:11px;color:var(--t3)">${pF}% da receita</div></div>
+        <div style="background:rgba(217,192,136,.07);border:1px solid rgba(217,192,136,.18);border-radius:var(--rs);padding:12px;text-align:center"><div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase;margin-bottom:4px"> Variáveis</div><div style="font-size:19px;font-weight:800;color:var(--amber)">${fmt(tV)}</div><div style="font-size:11px;color:var(--t3)">${pV}% da receita</div></div>
       </div>
     </div>
 
     <div class="card">
-      <div class="sl" style="margin-top:0">💡 Sugestões personalizadas</div>
+      <div class="sl" style="margin-top:0"> Sugestões personalizadas</div>
       ${di.map(d=>`<div style="padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2);line-height:1.5">${d}</div>`).join('')}
     </div>
 
     <div class="card">
-      <div class="sl" style="margin-top:0">🎯 Metas para o próximo mês</div>
+      <div class="sl" style="margin-top:0"> Metas para o próximo mês</div>
       <div class="rrow"><span>Receita alvo (+10%)</span><b style="color:var(--teal)">${fmt(recT*1.1)}</b></div>
       <div class="rrow"><span>Teto de fixos (35%)</span><b style="color:var(--rose)">${fmt(recT*.35)}</b></div>
       <div class="rrow"><span>Teto de variáveis (30%)</span><b style="color:var(--amber)">${fmt(recT*.3)}</b></div>
@@ -2425,12 +2383,12 @@ async function pagarDivSaude(id){
   if(!v){toast('Informe o valor a pagar','err');return;}
   if(!DB.div[id])return;
   DB.div[id].pago=Math.min(DB.div[id].pago+v,DB.div[id].total);
-  await save();toast('✅ Pagamento registrado!');render();
+  await save();toast('Pagamento registrado!');render();
 }
 
 /* ═══════ CONTEÚDO DIGITAL ══════════════════════ */
-const IDEIAS=['🎬 "30 segundos antes do palco" — seu ritual de aquecimento real','📸 Check-in no local: "Hoje tem show às [hora]!"','🎸 Mostre sua pedaleira e explique cada equipamento em 60s','📹 Montagem do palco em timelapse com música — muito engajamento','🎤 "A música mais pedida essa semana" + trecho ao vivo','💬 Caixinha: "Me perguntem sobre ser músico profissional"','🎹 Tutorial de um riff que você usa muito','🚗 Vídeo no carro a caminho do show: "destino: [local]"','⭐ Compartilhe elogio de cliente (com permissão)','📋 "Shows desta semana" — todo domingo à noite','🎼 Antes x depois: como você tocava há 1 ano vs agora','📍 Carrossel "Como contratar a banda" passo a passo'];
-const SEMANA=[{d:'Segunda',i:'📋',t:'Post fixo: "Shows da semana" — stories + feed'},{d:'Terça',i:'🎬',t:'Reels de bastidores: soundcheck ou equipamentos'},{d:'Quarta',i:'💬',t:'Engajamento: enquete ou caixinha nos stories'},{d:'Quinta',i:'🎵',t:'Conteúdo musical: cover, tutorial ou trecho ao vivo'},{d:'Sexta',i:'🔥',t:'"Hoje tem show!" — stories com local e horário'},{d:'Sábado',i:'📸',t:'Fotos e vídeos ao vivo nos stories em tempo real'},{d:'Domingo',i:'🌟',t:'Melhor momento da semana + agradecimento ao cliente'}];
+const IDEIAS=['"30 segundos antes do palco" — seu ritual de aquecimento real','Check-in no local: "Hoje tem show às [hora]!"',' Mostre sua pedaleira e explique cada equipamento em 60s',' Montagem do palco em timelapse com música — muito engajamento','"A música mais pedida essa semana" + trecho ao vivo','Caixinha: "Me perguntem sobre ser músico profissional"',' Tutorial de um riff que você usa muito','Vídeo no carro a caminho do show: "destino: [local]"','⭐ Compartilhe elogio de cliente (com permissão)','"Shows desta semana" — todo domingo à noite',' Antes x depois: como você tocava há 1 ano vs agora','Carrossel "Como contratar a banda" passo a passo'];
+const SEMANA=[{d:'Segunda',i:'P',t:'Post fixo: "Shows da semana" — stories + feed'},{d:'Terça',i:'R',t:'Reels de bastidores: soundcheck ou equipamentos'},{d:'Quarta',i:'E',t:'Engajamento: enquete ou caixinha nos stories'},{d:'Quinta',i:'M',t:'Conteúdo musical: cover, tutorial ou trecho ao vivo'},{d:'Sexta',i:'S',t:'"Hoje tem show!" — stories com local e horário'},{d:'Sábado',i:'F',t:'Fotos e vídeos ao vivo nos stories em tempo real'},{d:'Domingo',i:'D',t:'Melhor momento da semana + agradecimento ao cliente'}];
 const FERRAMENTAS=[{n:'CapCut',d:'Editar Reels no celular — gratuito',c:'var(--vio)'},{n:'Canva',d:'Criar artes para posts e cartazes',c:'var(--sky)'},{n:'Meta Business',d:'Agendar posts no Instagram gratuitamente',c:'var(--teal)'},{n:'Google Meu Negócio',d:'Aparecer no Google e receber avaliações',c:'var(--amber)'},{n:'InShot',d:'Editar vídeos com trilha sonora',c:'var(--rose)'}];
 function novaIdeia(){idxIdeia=(idxIdeia+1)%IDEIAS.length;const e=$('ideia');if(e)e.textContent=IDEIAS[idxIdeia];}
 function renderConteudo(){
@@ -2461,7 +2419,7 @@ async function salvarEditShow(){
   const id=$('edit-show-id').value;if(!DB.shows[id])return;
   const valor=+$('es-valor').value||0,data=$('es-data').value||today(),prazo=+$('es-prazo').value||30;
   Object.assign(DB.shows[id],{nome:$('es-nome').value.trim(),data,hora:$('es-hora').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('es-tipo').value,status:$('es-status').value,obs:$('es-obs').value.trim(),recData:addDays(data,prazo),falta:!valor?['valor']:[]});
-  await save();fecharModalShow();toast('✅ Show atualizado');render();
+  await save();fecharModalShow();toast('Show atualizado');render();
 }
 
 /* ─── EDIÇÃO DE LANÇAMENTO ──────────────────────── */
@@ -2478,7 +2436,7 @@ async function salvarEditFin(){
   const id=$('edit-fin-id').value;if(!DB.fin[id])return;
   const pgto=$('ef-pgto').value,parc=pgto==='credito-parcelado'?(+$('ef-parc').value||2):null;
   Object.assign(DB.fin[id],{tipo:$('ef-tipo').value,valor:+$('ef-valor').value||0,desc:$('ef-desc').value.trim(),data:$('ef-data').value||today(),pgto,parc,rec:classRec($('ef-desc').value)});
-  await save();fecharModalFin();toast('✅ Lançamento atualizado');render();
+  await save();fecharModalFin();toast('Lançamento atualizado');render();
 }
 
 function render(){rDash();rShows();rSeries();rEq();rPags();rPagSel();rFin();rDivs();rEquip();renderRel();renderSaude();}
@@ -2508,9 +2466,9 @@ function rDash(){
     <div class="kpi"><div class="kpi-l">Prev. 90d</div><div class="kpi-v a">${fmt(prev)}</div></div>`);
   // Avisos
   const inc=arr(DB.shows).filter(s=>s.falta?.length&&s.status!=='cancelado');
-  set('avisos',inc.length?`<div class="card warn" style="margin-bottom:11px"><div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:7px">⚠️ ${inc.length} show(s) com dados incompletos</div>${inc.map(s=>`<div style="font-size:12px;color:var(--t2);padding:3px 0;border-bottom:1px solid rgba(245,166,35,.15)">📌 <b style="color:var(--tx)">${s.nome}</b> — falta: ${s.falta.join(', ')}</div>`).join('')}</div>`:'');
+  set('avisos',inc.length?`<div class="card warn" style="margin-bottom:11px"><div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:7px">️ ${inc.length} show(s) com dados incompletos</div>${inc.map(s=>`<div style="font-size:12px;color:var(--t2);padding:3px 0;border-bottom:1px solid rgba(217,192,136,.15)"> <b style="color:var(--tx)">${s.nome}</b> — falta: ${s.falta.join(', ')}</div>`).join('')}</div>`:'');
   // Resumo
-  set('d-resumo',`<div class="card"><div class="sl" style="margin-top:0">💰 Resumo de ${M[mes]}</div>
+  set('d-resumo',`<div class="card"><div class="sl" style="margin-top:0"> Resumo de ${M[mes]}</div>
     <div class="rrow"><span>Shows (${showsMes.length})</span><span style="color:var(--teal)">+${fmt(recS)}</span></div>
     <div class="rrow"><span>Outras receitas</span><span style="color:var(--teal)">+${fmt(recO)}</span></div>
     <div class="rrow"><span>Despesas</span><span style="color:var(--rose)">-${fmt(despT)}</span></div>
@@ -2555,7 +2513,7 @@ function rDash(){
     const[y,m2]=k.split('-');
     const lb=new Date(+y,+m2-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
     const isSeg=k===mesSeg;
-    return`<div style="display:flex;align-items:center;justify-content:space-between;background:${isSeg?'rgba(232,184,109,.1)':'var(--s2)'};border:1px solid ${isSeg?'rgba(232,184,109,.3)':'var(--line)'};border-radius:12px;padding:13px 15px;margin-bottom:8px">
+    return`<div style="display:flex;align-items:center;justify-content:space-between;background:${isSeg?'rgba(200,180,120,.1)':'var(--s2)'};border:1px solid ${isSeg?'rgba(200,180,120,.3)':'var(--line)'};border-radius:12px;padding:13px 15px;margin-bottom:8px">
       <div>
         <div style="font-size:13px;font-weight:600;text-transform:capitalize;color:${isSeg?'var(--gold)':'var(--tx)'}">${lb}</div>
         ${isSeg?`<div style="font-size:10px;color:var(--gold);margin-top:2px">⭐ próximo recebimento</div>`:''}
@@ -2610,10 +2568,10 @@ function showItem(sh){
     ${sh.escalacao&&sh.escalacao.length?`<div style="font-size:10px;color:var(--t3);margin-bottom:10px">Escalação: ${sh.escalacao.map(x=>x.nome).join(' · ')}</div>`:''}
     <!-- Ações compactas -->
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button onclick="abrirEditShow('${sh.id}')" style="flex:1;background:rgba(56,189,248,.1);color:var(--sky);border:1px solid rgba(56,189,248,.25);border-radius:8px;padding:8px 0;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">Editar</button>
+      <button onclick="abrirEditShow('${sh.id}')" style="flex:1;background:rgba(154,144,120,.05);color:var(--sky);border:1px solid rgba(154,144,120,.25);border-radius:8px;padding:8px 0;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">Editar</button>
       <button onclick="waEquipe('${sh.id}')" style="flex:1;background:rgba(37,211,102,.1);color:#25d366;border:1px solid rgba(37,211,102,.25);border-radius:8px;padding:8px 0;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">WhatsApp</button>
-      ${sh.serie?`<button onclick="cancelarOc('${sh.id}')" style="flex:1;background:rgba(242,93,124,.1);color:var(--rose);border:1px solid rgba(242,93,124,.25);border-radius:8px;padding:8px 0;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">Cancelar</button>`:''}
-      <button onclick="delShow('${sh.id}')" style="background:rgba(242,93,124,.08);color:var(--rose);border:1px solid rgba(242,93,124,.2);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;font-family:Inter">🗑</button>
+      ${sh.serie?`<button onclick="cancelarOc('${sh.id}')" style="flex:1;background:rgba(176,98,80,.05);color:var(--rose);border:1px solid rgba(176,98,80,.25);border-radius:8px;padding:8px 0;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">Cancelar</button>`:''}
+      <button onclick="delShow('${sh.id}')" style="background:rgba(176,98,80,.05);color:var(--rose);border:1px solid rgba(176,98,80,.28);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;font-family:Inter">&times;</button>
     </div>
   </div>`;
 }
@@ -2645,7 +2603,7 @@ function rShows(){
   e.innerHTML=resumo+
     (fut.length?`<div class="sl">Próximos shows</div>`+fut.map(showItem).join(''):'')+
     (pas.length?`<div class="sl">Histórico recente</div>`+pas.map(showItem).join(''):'') ||
-    `<div class="empty"><div style="font-size:32px;margin-bottom:10px">🎵</div><div>Nenhum show cadastrado.<br>Toque em <b>+ Show</b> para adicionar.</div></div>`;
+    `<div class="empty"><div style="font-size:32px;margin-bottom:10px"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(217,192,136,.9)" stroke-width="1.6" stroke-linecap="round" style="width:34px;height:34px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div>Nenhum show cadastrado.<br>Toque em <b>+ Show</b> para adicionar.</div></div>`;
 }
 
 /* ─── NF MENSAL DE SÉRIES ─────────────────────────
@@ -2684,7 +2642,7 @@ async function emitirNfMensal(serieId, mesRef, dtEmissao, desc){
     tipo: 'serie',
     desc: (desc||'').trim()
   };
-   await save(); toast('✅ NF da série emitida! Recebimento em '+fmtD(addDays(dtEmissao,30))); render();
+   await save(); toast('NF da série emitida! Recebimento em '+fmtD(addDays(dtEmissao,30))); render();
 }
 /* NF individual de UM show da série (mesma lógica, chave separada) */
 function nfShowKey(serieId, mesRef, showId){ return serieId+'_'+mesRef+'_'+showId; }
@@ -2705,11 +2663,11 @@ async function emitirNfShow(serieId, mesRef, showId, dtEmissao, desc){
     tipo: 'show',
     desc: (desc||'').trim()
   };
-   await save(); toast('✅ NF individual emitida para "'+s.nome+'"'); render();
+   await save(); toast('NF individual emitida para "'+s.nome+'"'); render();
 }
 
 async function marcarNfRecebida(key){
-   if(DB.nfMensal[key]) { DB.nfMensal[key].status='recebida'; await save(); toast('✅ NF marcada como recebida!'); render(); }
+   if(DB.nfMensal[key]) { DB.nfMensal[key].status='recebida'; await save(); toast('NF marcada como recebida!'); render(); }
 }
 
 async function delNfMensal(key){
@@ -2768,16 +2726,16 @@ function rSeries(){
       // Card do mês
       let nfBloco='';
       if(nfSerie){
-        nfBloco=`<div style="background:rgba(34,211,160,.06);border:1px solid rgba(34,211,160,.25);border-radius:var(--rs);padding:11px 13px;margin-top:9px">
+        nfBloco=`<div style="background:rgba(239,207,107,.07);border:1px solid rgba(217,192,136,.25);border-radius:var(--rs);padding:11px 13px;margin-top:9px">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
             <div>
-              <div style="font-size:12px;font-weight:700">📄 NF ÚNICA da série</div>
-              <div style="font-size:11px;color:var(--t3);margin-top:2px">Soma os ${calc.qtShows} shows do mês · ${fmt(calc.liq)} líquido</div>
+              <div style="font-size:12px;font-weight:700"> NF ÚNICA da série</div>
+              <div style="font-size:11px;color:var(--t2);margin-top:2px">Soma os ${calc.qtShows} shows do mês · ${fmt(calc.liq)} líquido</div>
               ${nfSerie.desc?`<div style="font-size:11px;color:var(--vio2);margin-top:3px">${nfSerie.desc}</div>`:''}
             </div>
             <span class="bdg ${nfSerie.status==='recebida'?'g':'b'}">${nfSerie.status==='recebida'?'Recebida':'Emitida'}</span>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:var(--t3);margin-bottom:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:var(--t2);margin-bottom:10px">
             <div>Emitida em<br><b style="font-size:13px;color:var(--tx)">${fmtD(nfSerie.dtEmissao)}</b></div>
             <div>Recebimento previsto<br><b style="font-size:13px;color:${nfSerie.status==='recebida'?'var(--teal)':'var(--gold)'}">${fmtD(nfSerie.dtRecebimento)}</b></div>
           </div>
@@ -2787,9 +2745,9 @@ function rSeries(){
           </div>
         </div>`;
       } else if(podeEmitir){
-        nfBloco=`<div style="background:rgba(124,92,252,.06);border:1px dashed rgba(124,92,252,.3);border-radius:var(--rs);padding:11px 13px;margin-top:9px">
+        nfBloco=`<div style="background:rgba(200,180,120,.06);border:1px dashed rgba(200,180,120,.3);border-radius:var(--rs);padding:11px 13px;margin-top:9px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
-            <div style="font-size:12px;font-weight:700;color:var(--vio2)">📄 NF ÚNICA da série (todos os shows juntos)</div>
+            <div style="font-size:12px;font-weight:700;color:var(--vio2)"> NF ÚNICA da série (todos os shows juntos)</div>
             <span class="bdg a" style="font-size:9px">Pendente</span>
           </div>
           <div style="font-size:11px;color:var(--t3);margin-bottom:9px">${calc.qtShows} shows · ${fmt(calc.valor)} bruto · ${fmt(calc.liq)} líquido</div>
@@ -2841,7 +2799,7 @@ async function abrirNfShow(serieId, mesRef, showId){
   const e=$('lista-eq');if(!e)return;
   const eq=arr(DB.equipe);
   const tP=eq.reduce((a,m)=>a+(m.perc||0),0);
-  const info=tP>0?`<div class="notice ${tP>100?'err':'ok'}" style="margin-bottom:9px">${tP>100?'⚠️ Total alocado '+tP.toFixed(1)+'% — passa de 100%':'✅ Alocado: '+tP.toFixed(1)+'% · Saldo artista: '+(100-tP).toFixed(1)+'%'}</div>`:'';
+  const info=tP>0?`<div class="notice ${tP>100?'err':'ok'}" style="margin-bottom:9px">${tP>100?'️ Total alocado '+tP.toFixed(1)+'% — passa de 100%':'Alocado: '+tP.toFixed(1)+'% · Saldo artista: '+(100-tP).toFixed(1)+'%'}</div>`:'';
   // Pagamentos por membro e por show
   const pagsPorMembro=(mbId)=>arr(DB.pags).filter(p=>p.mbId===mbId);
   const porShow=(mbId)=>{
@@ -2879,7 +2837,7 @@ async function abrirNfShow(serieId, mesRef, showId){
           </div>`:`<div style="font-size:11px;color:var(--t3);margin-top:6px">Nenhum pagamento registrado.</div>`}
         </div>
         <div style="display:flex;gap:6px;align-items:flex-start">
-          ${m.wa?`<a href="https://wa.me/55${m.wa.replace(/\D/g,'')}?text=Olá+${encodeURIComponent(m.nome)}!" class="btn wa" style="text-decoration:none" target="_blank">📲</a>`:''}
+          ${m.wa?`<a href="https://wa.me/55${m.wa.replace(/\D/g,'')}?text=Olá+${encodeURIComponent(m.nome)}!" class="btn wa" style="text-decoration:none" target="_blank"></a>`:''}
           <button class="btn sm del" onclick="delMembro('${m.id}')">×</button>
         </div>
       </div>
@@ -2941,7 +2899,7 @@ function rFin(){
   const e=$('lista-fin');if(!e)return;
   const previsao=`<div class="sl">Previsão dos próximos meses</div><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">${rPrevisao()}</div>`;
   const s=arr(DB.fin).sort((a,b)=>b.data.localeCompare(a.data));
-  if(!s.length){e.innerHTML=`<div class="empty"><div style="font-size:28px;margin-bottom:8px">💰</div>Nenhum lançamento.<br>Use o campo acima ou o botão <b>+ Lançar</b>.</div>`;return;}
+  if(!s.length){e.innerHTML=`<div class="empty"><div style="font-size:28px;margin-bottom:8px"></div>Nenhum lançamento.<br>Use o campo acima ou o botão <b>+ Lançar</b>.</div>`;return;}
 
   const rec=s.filter(f=>f.tipo==='rec');
   const fix=s.filter(f=>f.tipo!=='rec'&&f.rec==='fixo');
@@ -2952,21 +2910,21 @@ function rFin(){
 
   // Resumo visual no topo
   const resumo=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:14px">
-    <div style="background:rgba(34,211,160,.08);border:1px solid rgba(34,211,160,.2);border-radius:12px;padding:11px;text-align:center">
-      <div style="font-size:9px;font-weight:700;color:var(--teal);text-transform:uppercase;margin-bottom:4px">💰 Receitas</div>
+    <div style="background:rgba(217,192,136,.08);border:1px solid rgba(239,207,107,.25);border-radius:12px;padding:11px;text-align:center">
+      <div style="font-size:9px;font-weight:700;color:var(--teal);text-transform:uppercase;margin-bottom:4px"> Receitas</div>
       <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--teal)">+${fmt(tR)}</div>
     </div>
-    <div style="background:rgba(242,93,124,.07);border:1px solid rgba(242,93,124,.18);border-radius:12px;padding:11px;text-align:center">
-      <div style="font-size:9px;font-weight:700;color:var(--rose);text-transform:uppercase;margin-bottom:4px">🔒 Fixos</div>
+    <div style="background:rgba(176,98,80,.07);border:1px solid rgba(176,98,80,.18);border-radius:12px;padding:11px;text-align:center">
+      <div style="font-size:9px;font-weight:700;color:var(--rose);text-transform:uppercase;margin-bottom:4px"> Fixos</div>
       <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--rose)">-${fmt(tF)}</div>
     </div>
-    <div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.18);border-radius:12px;padding:11px;text-align:center">
-      <div style="font-size:9px;font-weight:700;color:var(--amber);text-transform:uppercase;margin-bottom:4px">📊 Variáveis</div>
+    <div style="background:rgba(217,192,136,.07);border:1px solid rgba(217,192,136,.18);border-radius:12px;padding:11px;text-align:center">
+      <div style="font-size:9px;font-weight:700;color:var(--amber);text-transform:uppercase;margin-bottom:4px"> Variáveis</div>
       <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--amber)">-${fmt(tV)}</div>
     </div>
   </div>`;
 
-  const pgLabel={'pix':'Pix','dinheiro':'💵 Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':'Crédito parcelado'};
+  const pgLabel={'pix':'Pix','dinheiro':' Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':'Crédito parcelado'};
   const pgColor={'pix':'var(--teal)','dinheiro':'var(--gold)','debito':'var(--sky)','credito-vista':'var(--vio2)','credito-parcelado':'var(--vio2)'};
 
   const row=f=>{
@@ -2979,7 +2937,7 @@ function rFin(){
     const borda=isRec?'var(--teal)':isFix?'var(--rose)':'var(--amber)';
     return`<div style="display:flex;align-items:center;background:var(--s2);border:1px solid var(--line);border-left:3px solid ${borda};border-radius:12px;padding:12px 13px;margin-bottom:7px;gap:10px">
       <!-- Ícone tipo -->
-      <div style="width:36px;height:36px;border-radius:10px;background:${cor}14;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${isRec?'💰':isFix?'🔒':'📊'}</div>
+      <div style="width:36px;height:36px;border-radius:10px;background:${cor}14;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${isRec?'':isFix?'':''}</div>
       <!-- Info principal -->
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.desc}</div>
@@ -2995,8 +2953,8 @@ function rFin(){
       </div>
       <!-- Ações -->
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-        <button onclick="abrirEditFin('${f.id}')" style="background:rgba(56,189,248,.1);color:var(--sky);border:1px solid rgba(56,189,248,.22);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:Inter">✏️</button>
-        <button onclick="delFin('${f.id}')" style="background:rgba(242,93,124,.08);color:var(--rose);border:1px solid rgba(242,93,124,.2);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:Inter">🗑</button>
+        <button onclick="abrirEditFin('${f.id}')" style="background:rgba(154,144,120,.05);color:var(--sky);border:1px solid rgba(154,144,120,.22);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:Inter">️</button>
+        <button onclick="delFin('${f.id}')" style="background:rgba(176,98,80,.05);color:var(--rose);border:1px solid rgba(176,98,80,.28);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:Inter">&times;</button>
       </div>
     </div>`;
   };
@@ -3009,7 +2967,7 @@ function rFin(){
     ${lista.slice(0,25).map(row).join('')}
   `:'';
 
-  e.innerHTML=previsao+resumo+bloco(rec,'💰 Receitas','var(--teal)')+bloco(fix,'🔒 Fixos','var(--rose)')+bloco(vri,'📊 Variáveis','var(--amber)');
+  e.innerHTML=previsao+resumo+bloco(rec,' Receitas','var(--teal)')+bloco(fix,' Fixos','var(--rose)')+bloco(vri,' Variáveis','var(--amber)');
 }
 function rDivs(){
   ['empresa','casa'].forEach(cat=>{
@@ -3022,7 +2980,7 @@ function rDivs(){
     const pago=divs.reduce((a,b)=>a+(b.pago||0),0);
     const aberto=total-pago;
 
-    const resumoCat=`<div style="background:rgba(242,93,124,.07);border:1px solid rgba(242,93,124,.18);border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+    const resumoCat=`<div style="background:rgba(176,98,80,.07);border:1px solid rgba(176,98,80,.18);border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
       <div>
         <div style="font-size:10px;font-weight:700;color:var(--rose);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">${divs.length} dívida${divs.length!==1?'s':''} em aberto</div>
         <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--rose)">${fmt(aberto)}</div>
@@ -3034,7 +2992,7 @@ function rDivs(){
     </div>`;
 
     const priColors={alta:'var(--rose)',media:'var(--amber)',baixa:'var(--teal)'};
-    const priIcons={alta:'🔴',media:'🟡',baixa:'🟢'};
+    const priIcons={alta:'',media:'',baixa:''};
 
     const cards=divs.sort((a,b)=>{const o={alta:0,media:1,baixa:2};return o[a.pri]-o[b.pri];}).map(d=>{
       const rest=d.total-d.pago;
@@ -3063,9 +3021,9 @@ function rDivs(){
         <!-- Registrar pagamento inline -->
         <div style="background:var(--s3);border-radius:10px;padding:11px;display:flex;gap:7px;align-items:center">
           <input type="number" id="ab-${d.id}" placeholder="Valor a pagar agora (R$)" inputmode="decimal" style="flex:1;font-size:13px;padding:9px 11px;background:var(--s2)">
-          <button onclick="abaterDiv('${d.id}')" style="background:var(--teal);color:#050b18;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:Inter">✓ Pagar</button>
-          <button onclick="abrirEditDiv('${d.id}')" style="background:rgba(56,189,248,.1);color:var(--sky);border:1px solid rgba(56,189,248,.22);border-radius:8px;padding:9px 10px;font-size:12px;cursor:pointer;font-family:Inter">✏️</button>
-          <button onclick="delDiv('${d.id}')" style="background:rgba(242,93,124,.08);color:var(--rose);border:1px solid rgba(242,93,124,.2);border-radius:8px;padding:9px 10px;font-size:12px;cursor:pointer;font-family:Inter">🗑</button>
+          <button onclick="abaterDiv('${d.id}')" style="background:var(--teal);color:#0c0a06;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:Inter"> Pagar</button>
+          <button onclick="abrirEditDiv('${d.id}')" style="background:rgba(154,144,120,.05);color:var(--sky);border:1px solid rgba(154,144,120,.22);border-radius:8px;padding:9px 10px;font-size:12px;cursor:pointer;font-family:Inter">️</button>
+          <button onclick="delDiv('${d.id}')" style="background:rgba(176,98,80,.05);color:var(--rose);border:1px solid rgba(176,98,80,.28);border-radius:8px;padding:9px 10px;font-size:12px;cursor:pointer;font-family:Inter">&times;</button>
         </div>
       </div>`;
     }).join('');
@@ -3171,5 +3129,5 @@ go = function(id, btn){
   render();
 };
 </script>
-</body>
+</div></body>
 </html>
