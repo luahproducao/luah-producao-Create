@@ -583,7 +583,8 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <div class="notice info">Simples Nacional 6% calculado automaticamente</div>
     <div class="card">
       <div class="r2">
-        <div class="fg"><label>Nome / local</label><input id="sn" placeholder="ex: Casamento Silva"></div>
+        <div class="fg"><label>Nome</label><input id="sn" placeholder="ex: Casamento Silva"></div>
+        <div class="fg"><label>Local</label><input id="sl" placeholder="ex: Espaço Villa — Salvador/BA"></div>
         <div class="fg"><label>Data</label><input id="sd" type="date"></div>
       </div>
       <div class="r2">
@@ -640,7 +641,8 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <div class="notice v">Shows que se repetem toda semana automaticamente</div>
     <div class="card">
       <div class="r2">
-        <div class="fg"><label>Nome / local</label><input id="rn" placeholder="ex: Noite de Branco — IberoStar"></div>
+        <div class="fg"><label>Nome</label><input id="rn" placeholder="ex: Noite de Branco"></div>
+        <div class="fg"><label>Local</label><input id="rl" placeholder="ex: IberoStar Hotel"></div>
         <div class="fg"><label>Dia da semana</label>
           <select id="rd"><option value="0">Domingo</option><option value="1">Segunda</option><option value="2">Terça</option><option value="3">Quarta</option><option value="4">Quinta</option><option value="5">Sexta</option><option value="6" selected>Sábado</option></select>
         </div>
@@ -790,6 +792,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 <div id="v-fin" class="view">
   <div class="itabs">
     <button class="itab on" onclick="sub('fm',this)">Texto inteligente</button>
+    <button class="itab"    onclick="sub('fcar',this)">Cartões</button>
     <button class="itab"    onclick="sub('fma',this)">Manual</button>
     <button class="itab"    onclick="sub('fd',this)">Dívidas</button>
     <button class="itab"    onclick="sub('fs',this)"> Saúde</button>
@@ -818,6 +821,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     </div>
     <div id="msg-prev"></div>
   </div>
+  <div id="fcar" style="display:none"><div id="cartoes"></div></div>
   <div id="fma" style="display:none">
     <div class="card">
       <div class="r2">
@@ -975,7 +979,8 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     </div>
     <input type="hidden" id="edit-show-id">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">
-      <div class="fg"><label>Nome / local</label><input id="es-nome"></div>
+      <div class="fg"><label>Nome</label><input id="es-nome"></div>
+      <div class="fg"><label>Local</label><input id="es-local" placeholder="ex: Espaço Villa — Salvador/BA"></div>
       <div class="fg"><label>Data</label><input id="es-data" type="date"></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">
@@ -1705,9 +1710,9 @@ async function addShow(){
     return{mbId:id,nome:m.nome,fn:m.fn,val:vShow};
   });
   const id=uid();
-  DB.shows[id]={id,nome,data,hora:$('sh').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('stp').value,obs:$('sobs').value.trim(),status:'agendado',recData:addDays(data,prazo),serie:false,falta:!valor?['valor']:[],escalacao};
+  DB.shows[id]={id,nome,data,hora:$('sh').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('stp').value,obs:$('sobs').value.trim(),local:$('sl').value.trim(),status:'agendado',recData:addDays(data,prazo),serie:false,falta:!valor?['valor']:[],escalacao};
    await save();
-  $('sn').value='';$('sv').value='';$('sobs').value='';
+  $('sn').value='';$('sl').value='';$('sv').value='';$('sobs').value='';
   _escalaTemp['s']={};renderEscala('s');
   toast('Show adicionado!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
@@ -1722,9 +1727,9 @@ async function addSerie(){
     return{mbId:id,nome:m.nome,fn:m.fn,val:vShow};
   });
   const id=uid();
-  DB.series[id]={id,nome,dia:+$('rd').value,hora:$('rh').value||'21:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo:+($('rp')?.value||30),inicio,fim:$('rf').value||'',tipo:$('rtp').value,ferias,cancelados:[],escalacao};
+  DB.series[id]={id,nome,dia:+$('rd').value,hora:$('rh').value||'21:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo:+($('rp')?.value||30),inicio,fim:$('rf').value||'',tipo:$('rtp').value,ferias,cancelados:[],escalacao,local:$('rl').value.trim()};
    gerarSerie(id); await save();
-  $('rn').value='';$('rv').value='';$('ri').value='';$('rf').value='';
+  $('rn').value='';$('rl').value='';$('rv').value='';$('ri').value='';$('rf').value='';
   document.querySelectorAll('#mferias input').forEach(c=>c.checked=false);
   _escalaTemp['r']={};renderEscala('r');
   toast('Série criada!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
@@ -1742,7 +1747,7 @@ function gerarSerie(sid){
     if(!s.ferias.includes(cur.getMonth())&&!s.cancelados.includes(ds)){
       const id=uid();
       const pz=isNaN(+s.prazo)?30:+s.prazo;
-      DB.shows[id]={id,nome:s.nome,data:ds,hora:s.hora,valor:s.valor,liq:s.liq,imp:s.imp,prazo:pz,tipo:s.tipo,obs:'',status:'agendado',recData:addDays(ds,pz),serie:true,serieId:sid,falta:[],escalacao:(s.escalacao||[]).map(x=>({...x}))};
+      DB.shows[id]={id,nome:s.nome,data:ds,hora:s.hora,valor:s.valor,liq:s.liq,imp:s.imp,prazo:pz,tipo:s.tipo,obs:'',local:s.local||'',status:'agendado',recData:addDays(ds,pz),serie:true,serieId:sid,falta:[],escalacao:(s.escalacao||[]).map(x=>({...x}))};
     }
     cur.setDate(cur.getDate()+7);n++;
   }
@@ -1777,14 +1782,22 @@ function limparFormMembro(){editMembroId=null;['mn','mv','mp','mref','mpro','mpr
 function editarMembro(id){
   const m=DB.equipe[id];if(!m)return;
   editMembroId=id;
+  // Abrir a sub-tab do formulário de membro (antes de preencher, para o utilizador ver a aba)
+  if(typeof sub==='function'){
+    const eaTab=[...document.querySelectorAll('#v-equipe .itab')].find(t=>t.getAttribute('onclick').includes("sub('ea'"));
+    sub('ea',eaTab);
+  } else {
+    const ea=$('ea');if(ea)ea.style.display='block';
+    document.querySelectorAll('#v-equipe .itab').forEach(t=>{t.classList.toggle('on',t.getAttribute('onclick').includes("sub('ea'"));});
+  }
   $('mn').value=m.nome||'';$('mf').value=m.fn||'';$('mv').value=m.val||0;$('mp').value=m.perc||0;$('mref').value=m.ref||0;$('mpro').value=m.pro||0;$('mproP').value=m.proP||0;$('mwa').value=m.wa||'';
   const bt=$('btn-membro');if(bt){bt.textContent='Salvar alteração';bt.onclick=salvarMembro;}
   const cv=$('cancel-edit-mb');if(cv)cv.style.display='inline-flex';
+  // Destacar o formulário e rolar até ele
+  const form=$('mn').closest('.card');
+  if(form){form.style.borderColor='var(--gold)';form.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{form.style.borderColor='';},2200);}
   $('mn').focus();
-  // rolar o formulário até a secção da equipe (se estiver fora da vista)
-  const form=$('mn').closest('.card')||$('mn').parentElement.parentElement;
-  if(form)form.scrollIntoView({behavior:'smooth',block:'start'});
-  toast('Editando '+m.nome+' — altere e toque em Salvar');
+  toast('Editando '+m.nome+' — altere e toque em Salvar alteração');
 }
 function cancelarEditarMembro(){limparFormMembro();toast('Edição cancelada');}
 // Propagar a edição do membro aos shows futuros: escalacao (mantém função/valor atualizados) e shows futuros das séries
@@ -2029,6 +2042,67 @@ async function confirmarFinTXT(){
   toast(`${n} lançamento(s) salvo(s)!`);
 }
 /* ── Classificação e mensagem (existente) ───────────── */
+/* ═══════ RELATÓRIO MENSAL DE CARTÕES (v10) ══════════ */
+function renderCartoes(){
+  const e=$('cartoes');if(!e)return;
+  const hj=today();
+  const cartoes=arr(DB.fin).filter(f=>f.pgto==='credito-vista'||f.pgto==='credito-parcelado');
+  if(!cartoes.length){
+    e.innerHTML=`<div class="empty" style="padding:26px 10px">Nenhum gasto em cartão de crédito.<br><span style="font-size:12px;color:var(--t3)">Lançamentos com crédito (à vista ou parcelado) aparecerão aqui consolidados.</span></div>`;return;
+  }
+  // Meses com dados (últimos 6, incl. mês atual)
+  const meses={};
+  cartoes.forEach(f=>{const k=(f.data||'').slice(0,7);if(k)meses[k]=(meses[k]||0)+f.valor;});
+  // Incluir sempre o mês corrente no relatório (mesmo sem dados ainda)
+  const hjK=today().slice(0,7);
+  if(cartoes.length){meses[hjK]=meses[hjK]||0;}
+  // 5 meses mais recentes + mês corrente, em ordem cronológica
+  const ksSet=new Set(Object.keys(meses).sort().reverse().slice(0,5));
+  ksSet.add(hjK);
+  const ks=[...ksSet].sort();
+  if(!ks.length){e.innerHTML=`<div class="empty" style="padding:26px 10px">Lançamentos de cartão sem data válida.</div>`;return;}
+  const bancoDetetado=(f)=>{const d=(f.desc||'').toLowerCase();for(const b of FINTX_BANCOS){if(b.re.test(d))return b.nome;}return null;};
+  // Cards mensais
+  const cards=ks.map(k=>{
+    const [y,m]=k.split('-').map(Number);
+    const label=M[m-1]+' '+y;
+    const fins=cartoes.filter(f=>(f.data||'').slice(0,7)===k);
+    const total=fins.reduce((a,b)=>a+b.valor,0);
+    const vista=fins.filter(f=>f.pgto==='credito-vista').reduce((a,b)=>a+b.valor,0);
+    const parc=fins.filter(f=>f.pgto==='credito-parcelado');
+    const totalParc=parc.reduce((a,b)=>a+b.valor,0);
+    // Parcelas em aberto (ainda por vencer)
+    const abertas=arr(DB.fin).filter(f=>(f.pgto==='credito-parcelado'||f.pgto==='credito-vista')&&f.data>=hj&&f.valor>0);
+    const nAbertas=abertas.length;
+    const vAbertas=abertas.reduce((a,b)=>a+b.valor,0);
+    // Por banco
+    const porBanco={};
+    fins.forEach(f=>{const b=bancoDetetado(f)||'Outros';porBanco[b]=(porBanco[b]||0)+f.valor;});
+    const bancoRows=Object.entries(porBanco).sort((a,b)=>b[1]-a[1]).map(([b,v])=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--line)"><span>${b}</span><b style="color:var(--rose)">-${fmt(v)}</b></div>`).join('');
+    return`<div class="card" style="border-color:rgba(200,180,120,.25);margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gold)">${label}</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:700;color:var(--rose)">-${fmt(total)}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px">
+        <div style="background:var(--s3);border-radius:var(--rs);padding:8px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">À vista</div><div style="font-size:13px;font-weight:700;color:var(--amber)">${fmt(vista)}</div></div>
+        <div style="background:var(--s3);border-radius:var(--rs);padding:8px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Parcelado</div><div style="font-size:13px;font-weight:700;color:var(--amber)">${fmt(totalParc)}</div></div>
+        <div style="background:var(--s3);border-radius:var(--rs);padding:8px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Em aberto</div><div style="font-size:13px;font-weight:700;color:var(--rose)">${fmt(vAbertas)}</div></div>
+      </div>
+      ${fins.length>1?`<div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Por banco</div>${bancoRows}`:''}
+    </div>`;
+  }).join('');
+  // KPI consolidado
+  const totalGeral=cartoes.reduce((a,b)=>a+b.valor,0);
+  const emAberto=arr(DB.fin).filter(f=>(f.pgto==='credito-parcelado'||f.pgto==='credito-vista')&&f.data>=hj&&f.valor>0);
+  const vEmAberto=emAberto.reduce((a,b)=>a+b.valor,0);
+  const kpi=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+    <div style="background:rgba(217,192,136,.07);border:1px solid rgba(217,192,136,.22);border-radius:12px;padding:12px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--amber);text-transform:uppercase;margin-bottom:4px">Gasto total em cartões</div><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--amber)">${fmt(totalGeral)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">${cartoes.length} lançamento(s)</div></div>
+    <div style="background:rgba(176,98,80,.07);border:1px solid rgba(176,98,80,.22);border-radius:12px;padding:12px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--rose);text-transform:uppercase;margin-bottom:4px">Parcelas por pagar</div><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--rose)">${fmt(vEmAberto)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">${emAberto.length} lançamento(s) a vencer</div></div>
+  </div>`;
+  e.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px">Gastos com cartões de crédito<span style="flex:1;height:1px;background:var(--line)"></span></div>`+kpi+cards;
+}
+/* ── Cartões (fim) ─────────────────────────── */
 function processarMsg(){
   const txt=$('msgtxt').value.trim(),def=$('mtp').value,data=$('mdt').value||today();
   if(!txt){toast('Digite ao menos um débito','err');return;}
@@ -2449,7 +2523,7 @@ function abrirEditShow(id){
   $('es-prazo').value=sh.prazo||30;
   $('es-tipo').value=sh.tipo||'Outro';
   $('es-status').value=sh.status||'agendado';
-  $('es-obs').value=sh.obs||'';
+  $('es-obs').value=sh.obs||'';$('es-local').value=sh.local||'';
   // Carregar escalacao existente no seletor temporário de edição
   _escalaTemp['es']={};
   (sh.escalacao||[]).forEach(x=>{ if(x.mbId && DB.equipe[x.mbId]) _escalaTemp['es'][x.mbId]=true; });
@@ -2466,7 +2540,7 @@ async function salvarEditShow(){
     const vShow=m.perc>0&&valor?+(valor*(m.perc/100)).toFixed(2):m.val||0;
     return{mbId:mid,nome:m.nome,fn:m.fn,val:vShow};
   });
-  Object.assign(DB.shows[id],{nome:$('es-nome').value.trim(),data,hora:$('es-hora').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('es-tipo').value,status:$('es-status').value,obs:$('es-obs').value.trim(),recData:addDays(data,prazo),falta:!valor?['valor']:[],escalacao});
+  Object.assign(DB.shows[id],{nome:$('es-nome').value.trim(),local:$('es-local').value.trim(),data,hora:$('es-hora').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('es-tipo').value,status:$('es-status').value,obs:$('es-obs').value.trim(),recData:addDays(data,prazo),falta:!valor?['valor']:[],escalacao});
   await save();fecharModalShow();
   toast('Show atualizado'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
@@ -2488,7 +2562,7 @@ async function salvarEditFin(){
   await save();fecharModalFin();toast('Lançamento atualizado');render();
 }
 
-function render(){rDash();rShows();rSeries();rEq();rPags();rPagSel();rFin();rDivs();rEquip();renderRel();renderSaude();}
+function render(){rDash();rShows();rSeries();rEq();rPags();rPagSel();rFin();rDivs();rEquip();renderRel();renderSaude();renderCartoes();}
 
 function rDash(){
   const now=new Date(),mes=now.getMonth(),ano=now.getFullYear();
@@ -2529,7 +2603,7 @@ function rDash(){
     const dO=new Date(s.data+'T12:00');
     return`<div class="ag" style="${s.data<today()?'opacity:.55':''}">
       <div class="ag-d"><div class="ag-n" style="color:${s.serie?'var(--vio)':'var(--teal)'}">${dO.getDate()}</div><div class="ag-w">${D[dO.getDay()].slice(0,3)}</div></div>
-      <div style="flex:1"><div class="iname">${s.nome}</div><div class="imeta">${s.hora?s.hora+' · ':''}${s.tipo}${s.valor?' · '+fmt(s.valor):'<span style="color:var(--amber)"> · valor pendente</span>'}</div></div>
+      <div style="flex:1"><div class="iname">${s.nome}</div><div class="imeta">${s.hora?s.hora+' · ':''}${s.local?s.local+' · ':''}${s.tipo}${s.valor?' · '+fmt(s.valor):'<span style="color:var(--amber)"> · valor pendente</span>'}</div></div>
       <span class="bdg ${s.status==='recebido'?'g':s.status==='nf'?'b':'a'}">${s.status==='nf'?'NF':s.status}</span>
     </div>`;}).join(''):`<p class="empty">Nenhum show em ${M[mes]}.</p>`);
   // Próximos
@@ -2594,7 +2668,7 @@ function showItem(sh){
       </div>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sh.nome}</div>
-        <div style="font-size:11px;color:var(--t2);margin-top:2px">${sh.hora||''} · ${sh.tipo}${sh.serie?' · Série':''}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">${sh.hora||''}${sh.local?' · '+sh.local:''} · ${sh.tipo}${sh.serie?' · Série':''}</div>
       </div>
       <span style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;background:${stColor}18;color:${stColor};border:1px solid ${stColor}44;white-space:nowrap">${stLabel}</span>
     </div>
