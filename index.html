@@ -1181,7 +1181,7 @@ const D=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 
 let DB={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}};
 let _syncInterval=null;
-let vozData=null,rec=null,idxIdeia=0,_syncTimer=null;
+let vozData=null,mediaRec=null,audioChunks=[],recTimer=null,recSecs=0,_syncTimer=null,idxIdeia=0;
 
 /* ═══════ UTILS ════════════════════════════════════ */
 const fmt=v=>'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1437,13 +1437,26 @@ function iniciarSync(){carregarJB();}
 /* ═══════ INIT ══════════════════════════════════ */
 window.addEventListener('load',()=>{
   if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-  const logado=localStorage.getItem('luah_logado');
-  if(logado){
+  
+  // Verificar se tem senha cadastrada
+  const temSenha = !!localStorage.getItem(SENHA_KEY);
+  const logado   = !!localStorage.getItem('luah_logado');
+  
+  if(!temSenha){
+    // Primeiro acesso absoluto — entrar direto em modo local (sem pedir senha)
+    // Usuário cria a senha depois nas configurações
+    localStorage.setItem('luah_logado','1');
     $('login-view').style.display='none';
-    $('fb-setup-view').style.display='none';
+    const fbs=$('fb-setup-view');if(fbs)fbs.style.display='none';
+    if(jbKey()&&jbBin()){carregarJB();}
+    else{syncUI(false,'offline — sem JSONBin');loadLocal();render();}
+  } else if(logado){
+    $('login-view').style.display='none';
+    const fbs=$('fb-setup-view');if(fbs)fbs.style.display='none';
     if(jbKey()&&jbBin()){carregarJB();}
     else{syncUI(false,'local');loadLocal();render();}
   } else {
+    // Tem senha mas não está logado — pedir login
     $('login-view').style.display='block';
     $('v-dash').classList.remove('on');
   }
@@ -1563,7 +1576,7 @@ function toggleNovoMembro(prefix){
   if(el)el.style.display=el.style.display==='none'?'block':'none';
 }
 
-function salvarNovoMembroEscala(prefix){
+async function salvarNovoMembroEscala(prefix){
   const nome=$(('nm-'+prefix+'-nome')).value.trim();
   const val=+$(('nm-'+prefix+'-val')).value||0;
   if(!nome){toast('Informe o nome','err');return;}
@@ -1661,7 +1674,7 @@ function waEquipe(showId){
 /* ═══════ EQUIPE ════════════════════════════════ */
 function calcPMb(){const v=+$('mv').value||0,ref=+$('mref').value||0;if(v&&ref)$('mp').value=((v/ref)*100).toFixed(2);}
 function calcVMb(){const p=+$('mp').value||0,ref=+$('mref').value||0;if(p&&ref)$('mv').value=((p/100)*ref).toFixed(2);}
-function addMembro(){
+async function addMembro(){
   const nome=$('mn').value.trim();if(!nome){toast('Informe o nome','err');return;}
   const id=uid();
   DB.equipe[id]={id,nome,fn:$('mf').value,val:+$('mv').value||0,perc:+$('mp').value||0,ref:+$('mref').value||0,pro:+$('mpro').value||0,proP:+$('mproP').value||0,wa:$('mwa').value.trim()};
@@ -1772,19 +1785,19 @@ function processarMsg(){
   const grupo=(lista,tit,cor,icon)=>lista.length?`
     <div style="margin-bottom:11px">
       <div style="font-size:10px;font-weight:700;color:${cor};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:flex;justify-content:space-between">${icon} ${tit}<span>${fmt(lista.reduce((a,b)=>a+b.valor,0))}</span></div>
-      ${lista.map(it=>`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--s1);border:1px solid var(--br);border-radius:var(--rs);padding:8px 11px;margin-bottom:5px">
+      ${lista.map(it=>`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--s1);border:1px solid var(--line);border-radius:var(--rs);padding:8px 11px;margin-bottom:5px">
         <div><div style="font-size:13px;font-weight:600">${it.nome}</div><div style="font-size:11px;color:var(--t3)">${it.cat} · ${it.tipo==='desp'?'Empresa':'Casa'}</div></div>
-        <span style="font-size:13px;font-weight:700;color:var(--re)">-${fmt(it.valor)}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--rose)">-${fmt(it.valor)}</span>
       </div>`).join('')}
     </div>`:''
   $('msg-prev').innerHTML=`
     <div class="card" style="margin-top:10px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:11px;display:flex;justify-content:space-between">${itens.length} débitos identificados<span style="color:var(--re)">${fmt(tF+tV)}</span></div>
-      ${grupo(fix,'Custos Fixos','var(--re)','🔒')}
-      ${grupo(vari,'Custos Variáveis','var(--am)','📊')}
+      <div style="font-size:13px;font-weight:700;margin-bottom:11px;display:flex;justify-content:space-between">${itens.length} débitos identificados<span style="color:var(--rose)">${fmt(tF+tV)}</span></div>
+      ${grupo(fix,'Custos Fixos','var(--rose)','🔒')}
+      ${grupo(vari,'Custos Variáveis','var(--amber)','📊')}
       <div class="g2" style="margin:11px 0 13px">
-        <div style="background:rgba(240,92,122,.08);border:1px solid rgba(240,92,122,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--re);font-weight:700;text-transform:uppercase">🔒 Fixos</div><div style="font-size:18px;font-weight:800;color:var(--re)">${fmt(tF)}</div></div>
-        <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--am);font-weight:700;text-transform:uppercase">📊 Variáveis</div><div style="font-size:18px;font-weight:800;color:var(--am)">${fmt(tV)}</div></div>
+        <div style="background:rgba(240,92,122,.08);border:1px solid rgba(240,92,122,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--rose);font-weight:700;text-transform:uppercase">🔒 Fixos</div><div style="font-size:18px;font-weight:800;color:var(--rose)">${fmt(tF)}</div></div>
+        <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase">📊 Variáveis</div><div style="font-size:18px;font-weight:800;color:var(--amber)">${fmt(tV)}</div></div>
       </div>
       <button class="btn pri" onclick="confirmarMsg()">✅ Salvar ${itens.length} débitos</button>
       <div class="sp"></div>
@@ -1886,7 +1899,6 @@ async function saveMedia(){DB.meta.mediaShow=+$('eqmed').value||0;await save();}
    3. Claude transcreve e extrai os dados do show
    4. Exibe preview para confirmação
 ──────────────────────────────────────────────────── */
-let mediaRec = null, audioChunks = [], recTimer = null, recSecs = 0;
 
 async function iniciarGravacao(){
   const btn=$('micbtn');
@@ -2021,7 +2033,7 @@ function montarPreviewVoz(show){
     liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),
     prazo,tipo:show.tipo||'Outro',obs:show.obs||'',
     status:'agendado',recData:addDays(data,prazo),serie:false,falta};
-  const c=falta.length?'var(--am)':'var(--teal)';
+  const c=falta.length?'var(--amber)':'var(--teal)';
   $('voz-prev').style.display='block';
   $('voz-prev').innerHTML=`<div class="card" style="margin-top:11px;border-color:${c}33;text-align:left">
     <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:${c}">${falta.length?'⚠️ Show captado (dados incompletos)':'✅ Show identificado'}</div>
@@ -2029,7 +2041,7 @@ function montarPreviewVoz(show){
       <b style="color:var(--tx)">Nome:</b> ${nF}<br>
       <b style="color:var(--tx)">Data:</b> ${fmtD(data)} às ${show.hora||'20:00'}<br>
       <b style="color:var(--tx)">Tipo:</b> ${show.tipo||'Outro'}<br>
-      <b style="color:var(--tx)">Valor bruto:</b> ${valor?fmt(valor):'<span style="color:var(--am)">não informado</span>'}<br>
+      <b style="color:var(--tx)">Valor bruto:</b> ${valor?fmt(valor):'<span style="color:var(--amber)">não informado</span>'}<br>
       ${valor?`<b style="color:var(--tx)">Líquido (após 6%):</b> <span style="color:var(--teal)">${fmt(vozData.liq)}</span><br>`:''}
       <b style="color:var(--tx)">Recebimento previsto:</b> ${fmtD(vozData.recData)}
     </div>
@@ -2058,16 +2070,16 @@ function parseVoz(txt){
   const nF=nome||'Show sem nome';
   const falta=[];if(!nome)falta.push('nome');if(!valor)falta.push('valor');
   vozData={id:uid(),nome:nF,data,hora,valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:'Outro',obs:'',status:'agendado',recData:addDays(data,prazo),serie:false,falta};
-  const c=falta.length?'var(--am)':'var(--gr)';
+  const c=falta.length?'var(--amber)':'var(--teal)';
   $('voz-prev').style.display='block';
   $('voz-prev').innerHTML=`<div class="card" style="margin-top:11px;border-color:${c}33">
     <div style="font-size:13px;font-weight:700;margin-bottom:7px;color:${c}">${falta.length?'⚠️ Show captado (incompleto)':'✅ Show identificado'}</div>
-    <div style="font-size:13px;color:var(--t2);line-height:2"><b style="color:var(--tx)">Nome:</b> ${nF}<br><b style="color:var(--tx)">Data:</b> ${fmtD(data)}<br><b style="color:var(--tx)">Valor:</b> ${valor?fmt(valor):'<span style="color:var(--am)">não informado</span>'}<br>${valor?`<b style="color:var(--tx)">Líquido:</b> <span style="color:var(--gr)">${fmt(vozData.liq)}</span><br>`:''}<b style="color:var(--tx)">Recebimento:</b> ${fmtD(vozData.recData)}</div>
+    <div style="font-size:13px;color:var(--t2);line-height:2"><b style="color:var(--tx)">Nome:</b> ${nF}<br><b style="color:var(--tx)">Data:</b> ${fmtD(data)}<br><b style="color:var(--tx)">Valor:</b> ${valor?fmt(valor):'<span style="color:var(--amber)">não informado</span>'}<br>${valor?`<b style="color:var(--tx)">Líquido:</b> <span style="color:var(--teal)">${fmt(vozData.liq)}</span><br>`:''}<b style="color:var(--tx)">Recebimento:</b> ${fmtD(vozData.recData)}</div>
     ${falta.length?`<div class="notice warn" style="margin-top:8px">Faltando: ${falta.join(', ')} — complete depois na aba Shows</div>`:''}
   </div>`;
   $('voz-ok').style.display='block';
 }
-function salvarVoz(){
+async function salvarVoz(){
   if(!vozData)return;
    DB.shows[vozData.id]=vozData; await save();render();
   $('voz-txt').style.display='none';$('voz-prev').style.display='none';$('voz-ok').style.display='none';
@@ -2208,19 +2220,19 @@ function renderSaude(){
 
   // Score
   let score=100;const al=[];
-  if(saldo<0){score-=30;al.push({c:'var(--re)',t:`Saldo negativo: <b>${fmt(Math.abs(saldo))}</b> a mais saindo do que entrando.`});}
-  else if(saldo<recT*0.1){score-=15;al.push({c:'var(--am)',t:'Saldo muito apertado — menos de 10% da receita sobra.'});}
-  if(pF>50){score-=20;al.push({c:'var(--re)',t:`Fixos em <b>${pF}%</b> — acima de 50%, qualquer mês sem show vira déficit.`});}
-  else if(pF>35){score-=10;al.push({c:'var(--am)',t:`Fixos em <b>${pF}%</b> da receita. Ideal é abaixo de 35%.`});}
+  if(saldo<0){score-=30;al.push({c:'var(--rose)',t:`Saldo negativo: <b>${fmt(Math.abs(saldo))}</b> a mais saindo do que entrando.`});}
+  else if(saldo<recT*0.1){score-=15;al.push({c:'var(--amber)',t:'Saldo muito apertado — menos de 10% da receita sobra.'});}
+  if(pF>50){score-=20;al.push({c:'var(--rose)',t:`Fixos em <b>${pF}%</b> — acima de 50%, qualquer mês sem show vira déficit.`});}
+  else if(pF>35){score-=10;al.push({c:'var(--amber)',t:`Fixos em <b>${pF}%</b> da receita. Ideal é abaixo de 35%.`});}
   let divPenalty=0;
-  if(tDiv>recT*4){divPenalty=25;al.push({c:'var(--re)',t:`Dívidas (<b>${fmt(tDiv)}</b>) = mais de 4 meses de receita. Situação crítica.`});}
-  else if(tDiv>recT*2){divPenalty=15;al.push({c:'var(--re)',t:`Dívidas (<b>${fmt(tDiv)}</b>) = ${Math.round(tDiv/recT*10)/10}x a receita mensal. Atenção urgente.`});}
-  else if(tDiv>recT){divPenalty=10;al.push({c:'var(--am)',t:`Dívidas (<b>${fmt(tDiv)}</b>) maiores que a receita de um mês.`});}
-  else if(tDiv>0){divPenalty=5;al.push({c:'var(--am)',t:`Dívidas em aberto: <b>${fmt(tDiv)}</b>. Continue pagando regularmente.`});}
+  if(tDiv>recT*4){divPenalty=25;al.push({c:'var(--rose)',t:`Dívidas (<b>${fmt(tDiv)}</b>) = mais de 4 meses de receita. Situação crítica.`});}
+  else if(tDiv>recT*2){divPenalty=15;al.push({c:'var(--rose)',t:`Dívidas (<b>${fmt(tDiv)}</b>) = ${Math.round(tDiv/recT*10)/10}x a receita mensal. Atenção urgente.`});}
+  else if(tDiv>recT){divPenalty=10;al.push({c:'var(--amber)',t:`Dívidas (<b>${fmt(tDiv)}</b>) maiores que a receita de um mês.`});}
+  else if(tDiv>0){divPenalty=5;al.push({c:'var(--amber)',t:`Dívidas em aberto: <b>${fmt(tDiv)}</b>. Continue pagando regularmente.`});}
   score-=divPenalty;
-  if(divOrd.some(d=>d.pri==='alta'))al.push({c:'var(--re)',t:'Há dívidas de <b>prioridade alta</b> — foque nelas primeiro.'});
+  if(divOrd.some(d=>d.pri==='alta'))al.push({c:'var(--rose)',t:'Há dívidas de <b>prioridade alta</b> — foque nelas primeiro.'});
   score=Math.max(0,score);
-  const sc=score>=75?'var(--gr)':score>=50?'var(--am)':'var(--re)';
+  const sc=score>=75?'var(--teal)':score>=50?'var(--amber)':'var(--rose)';
   const sl=score>=75?'Boa 💚':score>=50?'Atenção ⚠️':'Crítica 🔴';
 
   // Sugestões
@@ -2239,14 +2251,14 @@ function renderSaude(){
     const ns=DB.meta?.mediaShow>0?Math.ceil(rest/DB.meta.mediaShow):null;
     const pc={alta:'re',media:'am',baixa:'t3'}[d.pri]||'t3';
     const pl={alta:'🔴 Alta',media:'🟡 Média',baixa:'🟢 Baixa'}[d.pri]||d.pri;
-    return`<div style="background:var(--s3);border:1px solid var(--br2);border-left:3px solid var(--${pc});border-radius:var(--rs);padding:12px 13px;margin-bottom:8px">
+    return`<div style="background:var(--s3);border:1px solid var(--line2);border-left:3px solid var(--${pc});border-radius:var(--rs);padding:12px 13px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
         <div>
           <div style="font-size:14px;font-weight:700;color:var(--tx)">${d.nome}</div>
           <div style="font-size:11px;color:var(--t3);margin-top:2px">${d.cat==='empresa'?'🏢 Empresa':'🏠 Casa'} · ${pl}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:16px;font-weight:800;color:var(--re)">${fmt(rest)}</div>
+          <div style="font-size:16px;font-weight:800;color:var(--rose)">${fmt(rest)}</div>
           <div style="font-size:10px;color:var(--t3)">de ${fmt(d.total)}</div>
         </div>
       </div>
@@ -2257,7 +2269,7 @@ function renderSaude(){
       </div>
       <div style="display:flex;gap:7px;margin-top:10px">
         <input type="number" id="qs-${d.id}" placeholder="Registrar pagamento (R$)" inputmode="decimal" style="flex:1;font-size:13px">
-        <button style="background:var(--gr);color:#07101f;border:none;border-radius:var(--rs);padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer" onclick="pagarDivSaude('${d.id}')">✓ Pagar</button>
+        <button style="background:var(--teal);color:#07101f;border:none;border-radius:var(--rs);padding:8px 13px;font-size:12px;font-weight:700;cursor:pointer" onclick="pagarDivSaude('${d.id}')">✓ Pagar</button>
       </div>
     </div>`;
   };
@@ -2272,34 +2284,34 @@ function renderSaude(){
         <div>
           <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Saúde financeira</div>
           <div style="font-size:19px;font-weight:700;color:${sc}">${sl}</div>
-          <div style="font-size:11px;color:var(--t3);margin-top:5px;line-height:1.8">Receita: <span style="color:var(--gr)">${fmt(recT)}</span><br>Fixos: <span style="color:var(--re)">${fmt(tF)} (${pF}%)</span><br>Saldo: <span style="color:${saldo>=0?'var(--gr)':'var(--re)'}">${fmt(saldo)}</span></div>
+          <div style="font-size:11px;color:var(--t3);margin-top:5px;line-height:1.8">Receita: <span style="color:var(--teal)">${fmt(recT)}</span><br>Fixos: <span style="color:var(--rose)">${fmt(tF)} (${pF}%)</span><br>Saldo: <span style="color:${saldo>=0?'var(--teal)':'var(--rose)'}">${fmt(saldo)}</span></div>
         </div>
       </div>
       <div class="pb"><div class="pf ${score>=75?'g':score>=50?'a':'r'}" style="width:${score}%"></div></div>
     </div>
 
-    ${al.length?`<div class="card">${al.map(a=>`<div style="display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--br);font-size:13px;line-height:1.5;align-items:flex-start"><span style="color:${a.c};font-size:7px;margin-top:6px">●</span><span style="color:var(--t2)">${a.t}</span></div>`).join('')}</div>`:''}
+    ${al.length?`<div class="card">${al.map(a=>`<div style="display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;line-height:1.5;align-items:flex-start"><span style="color:${a.c};font-size:7px;margin-top:6px">●</span><span style="color:var(--t2)">${a.t}</span></div>`).join('')}</div>`:''}
 
     ${tDiv>0?`
     <div class="card" style="border-color:rgba(240,92,122,.3)">
-      <div class="sl" style="margin-top:0">💳 Dívidas em aberto — impacto no score: <span style="color:var(--re)">-${divPenalty} pts</span></div>
+      <div class="sl" style="margin-top:0">💳 Dívidas em aberto — impacto no score: <span style="color:var(--rose)">-${divPenalty} pts</span></div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:13px">
         <div style="background:rgba(240,92,122,.08);border:1px solid rgba(240,92,122,.18);border-radius:var(--rs);padding:10px;text-align:center">
-          <div style="font-size:9px;color:var(--re);font-weight:700;text-transform:uppercase;margin-bottom:3px">Total</div>
-          <div style="font-size:15px;font-weight:800;color:var(--re)">${fmt(tDiv)}</div>
+          <div style="font-size:9px;color:var(--rose);font-weight:700;text-transform:uppercase;margin-bottom:3px">Total</div>
+          <div style="font-size:15px;font-weight:800;color:var(--rose)">${fmt(tDiv)}</div>
         </div>
         <div style="background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.15);border-radius:var(--rs);padding:10px;text-align:center">
           <div style="font-size:9px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Empresa</div>
-          <div style="font-size:15px;font-weight:800;color:var(--am)">${fmt(tDivEmp)}</div>
+          <div style="font-size:15px;font-weight:800;color:var(--amber)">${fmt(tDivEmp)}</div>
         </div>
         <div style="background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.15);border-radius:var(--rs);padding:10px;text-align:center">
           <div style="font-size:9px;color:var(--t3);font-weight:700;text-transform:uppercase;margin-bottom:3px">Casa</div>
-          <div style="font-size:15px;font-weight:800;color:var(--am)">${fmt(tDivCas)}</div>
+          <div style="font-size:15px;font-weight:800;color:var(--amber)">${fmt(tDivCas)}</div>
         </div>
       </div>
-      ${mesesQ?`<div style="background:rgba(155,126,248,.08);border:1px solid rgba(155,126,248,.2);border-radius:var(--rs);padding:10px 12px;margin-bottom:13px;font-size:12px;color:var(--vi);line-height:1.6">
+      ${mesesQ?`<div style="background:rgba(155,126,248,.08);border:1px solid rgba(155,126,248,.2);border-radius:var(--rs);padding:10px 12px;margin-bottom:13px;font-size:12px;color:var(--vio);line-height:1.6">
         📅 Pagando <b>${fmt(verbaMes)}/mês</b> (30% do saldo disponível) → dívidas quitadas em <b>~${mesesQ} ${mesesQ===1?'mês':'meses'}</b>.<br>
-        <span style="color:var(--t3)">Ao quitar tudo, seu score sobe <b style="color:var(--vi)">+${divPenalty} pts</b>.</span>
+        <span style="color:var(--t3)">Ao quitar tudo, seu score sobe <b style="color:var(--vio)">+${divPenalty} pts</b>.</span>
       </div>`:''}
       <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px">Por prioridade — registre pagamentos aqui:</div>
       ${divOrd.map(divCard).join('')}
@@ -2307,30 +2319,30 @@ function renderSaude(){
     <div class="card" style="border-color:rgba(34,211,160,.2)">
       <div style="display:flex;align-items:center;gap:12px;padding:4px 0">
         <div style="font-size:28px">🎉</div>
-        <div><div style="font-size:14px;font-weight:700;color:var(--gr)">Sem dívidas em aberto!</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Continue assim — foque em construir sua reserva de emergência.</div></div>
+        <div><div style="font-size:14px;font-weight:700;color:var(--teal)">Sem dívidas em aberto!</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Continue assim — foque em construir sua reserva de emergência.</div></div>
       </div>
     </div>`}
 
     <div class="card">
       <div class="sl" style="margin-top:0">📊 Composição das despesas</div>
       <div class="g2">
-        <div style="background:rgba(240,92,122,.07);border:1px solid rgba(240,92,122,.18);border-radius:var(--rs);padding:12px;text-align:center"><div style="font-size:10px;color:var(--re);font-weight:700;text-transform:uppercase;margin-bottom:4px">🔒 Fixos</div><div style="font-size:19px;font-weight:800;color:var(--re)">${fmt(tF)}</div><div style="font-size:11px;color:var(--t3)">${pF}% da receita</div></div>
-        <div style="background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.18);border-radius:var(--rs);padding:12px;text-align:center"><div style="font-size:10px;color:var(--am);font-weight:700;text-transform:uppercase;margin-bottom:4px">📊 Variáveis</div><div style="font-size:19px;font-weight:800;color:var(--am)">${fmt(tV)}</div><div style="font-size:11px;color:var(--t3)">${pV}% da receita</div></div>
+        <div style="background:rgba(240,92,122,.07);border:1px solid rgba(240,92,122,.18);border-radius:var(--rs);padding:12px;text-align:center"><div style="font-size:10px;color:var(--rose);font-weight:700;text-transform:uppercase;margin-bottom:4px">🔒 Fixos</div><div style="font-size:19px;font-weight:800;color:var(--rose)">${fmt(tF)}</div><div style="font-size:11px;color:var(--t3)">${pF}% da receita</div></div>
+        <div style="background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.18);border-radius:var(--rs);padding:12px;text-align:center"><div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase;margin-bottom:4px">📊 Variáveis</div><div style="font-size:19px;font-weight:800;color:var(--amber)">${fmt(tV)}</div><div style="font-size:11px;color:var(--t3)">${pV}% da receita</div></div>
       </div>
     </div>
 
     <div class="card">
       <div class="sl" style="margin-top:0">💡 Sugestões personalizadas</div>
-      ${di.map(d=>`<div style="padding:8px 0;border-bottom:1px solid var(--br);font-size:13px;color:var(--t2);line-height:1.5">${d}</div>`).join('')}
+      ${di.map(d=>`<div style="padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2);line-height:1.5">${d}</div>`).join('')}
     </div>
 
     <div class="card">
       <div class="sl" style="margin-top:0">🎯 Metas para o próximo mês</div>
-      <div class="rrow"><span>Receita alvo (+10%)</span><b style="color:var(--gr)">${fmt(recT*1.1)}</b></div>
-      <div class="rrow"><span>Teto de fixos (35%)</span><b style="color:var(--re)">${fmt(recT*.35)}</b></div>
-      <div class="rrow"><span>Teto de variáveis (30%)</span><b style="color:var(--am)">${fmt(recT*.3)}</b></div>
-      <div class="rrow"><span>Reserva mínima (10%)</span><b style="color:var(--bl)">${fmt(recT*.1)}</b></div>
-      ${tDiv>0?`<div class="rrow"><span>Pagar dívidas (30% do saldo)</span><b style="color:var(--vi)">${fmt(verbaMes)}</b></div>`:''}
+      <div class="rrow"><span>Receita alvo (+10%)</span><b style="color:var(--teal)">${fmt(recT*1.1)}</b></div>
+      <div class="rrow"><span>Teto de fixos (35%)</span><b style="color:var(--rose)">${fmt(recT*.35)}</b></div>
+      <div class="rrow"><span>Teto de variáveis (30%)</span><b style="color:var(--amber)">${fmt(recT*.3)}</b></div>
+      <div class="rrow"><span>Reserva mínima (10%)</span><b style="color:var(--sky)">${fmt(recT*.1)}</b></div>
+      ${tDiv>0?`<div class="rrow"><span>Pagar dívidas (30% do saldo)</span><b style="color:var(--vio)">${fmt(verbaMes)}</b></div>`:''}
     </div>`;
 }
 
@@ -2345,13 +2357,13 @@ async function pagarDivSaude(id){
 /* ═══════ CONTEÚDO DIGITAL ══════════════════════ */
 const IDEIAS=['🎬 "30 segundos antes do palco" — seu ritual de aquecimento real','📸 Check-in no local: "Hoje tem show às [hora]!"','🎸 Mostre sua pedaleira e explique cada equipamento em 60s','📹 Montagem do palco em timelapse com música — muito engajamento','🎤 "A música mais pedida essa semana" + trecho ao vivo','💬 Caixinha: "Me perguntem sobre ser músico profissional"','🎹 Tutorial de um riff que você usa muito','🚗 Vídeo no carro a caminho do show: "destino: [local]"','⭐ Compartilhe elogio de cliente (com permissão)','📋 "Shows desta semana" — todo domingo à noite','🎼 Antes x depois: como você tocava há 1 ano vs agora','📍 Carrossel "Como contratar a banda" passo a passo'];
 const SEMANA=[{d:'Segunda',i:'📋',t:'Post fixo: "Shows da semana" — stories + feed'},{d:'Terça',i:'🎬',t:'Reels de bastidores: soundcheck ou equipamentos'},{d:'Quarta',i:'💬',t:'Engajamento: enquete ou caixinha nos stories'},{d:'Quinta',i:'🎵',t:'Conteúdo musical: cover, tutorial ou trecho ao vivo'},{d:'Sexta',i:'🔥',t:'"Hoje tem show!" — stories com local e horário'},{d:'Sábado',i:'📸',t:'Fotos e vídeos ao vivo nos stories em tempo real'},{d:'Domingo',i:'🌟',t:'Melhor momento da semana + agradecimento ao cliente'}];
-const FERRAMENTAS=[{n:'CapCut',d:'Editar Reels no celular — gratuito',c:'var(--vi)'},{n:'Canva',d:'Criar artes para posts e cartazes',c:'var(--bl)'},{n:'Meta Business',d:'Agendar posts no Instagram gratuitamente',c:'var(--gr)'},{n:'Google Meu Negócio',d:'Aparecer no Google e receber avaliações',c:'var(--am)'},{n:'InShot',d:'Editar vídeos com trilha sonora',c:'var(--re)'}];
+const FERRAMENTAS=[{n:'CapCut',d:'Editar Reels no celular — gratuito',c:'var(--vio)'},{n:'Canva',d:'Criar artes para posts e cartazes',c:'var(--sky)'},{n:'Meta Business',d:'Agendar posts no Instagram gratuitamente',c:'var(--teal)'},{n:'Google Meu Negócio',d:'Aparecer no Google e receber avaliações',c:'var(--amber)'},{n:'InShot',d:'Editar vídeos com trilha sonora',c:'var(--rose)'}];
 function novaIdeia(){idxIdeia=(idxIdeia+1)%IDEIAS.length;const e=$('ideia');if(e)e.textContent=IDEIAS[idxIdeia];}
 function renderConteudo(){
   const id=$('ideia');if(id&&!id.textContent){idxIdeia=Math.floor(Math.random()*IDEIAS.length);id.textContent=IDEIAS[idxIdeia];}
-  const cs=$('cal-sem');if(cs&&!cs.innerHTML)cs.innerHTML=SEMANA.map(s=>`<div style="display:flex;gap:10px;align-items:flex-start;background:var(--s2);border:1px solid var(--br);border-radius:var(--r);padding:10px 12px;margin-bottom:6px"><div style="font-size:19px">${s.i}</div><div><div style="font-size:13px;font-weight:700">${s.d}</div><div style="font-size:12px;color:var(--t2);margin-top:2px;line-height:1.5">${s.t}</div></div></div>`).join('');
-  const bn=$('banco');if(bn&&!bn.innerHTML)bn.innerHTML=IDEIAS.map(i=>`<div style="background:var(--s2);border:1px solid var(--br);border-radius:var(--rs);padding:8px 11px;margin-bottom:5px;font-size:13px;color:var(--t2);line-height:1.4">${i}</div>`).join('');
-  const tl=$('tools');if(tl&&!tl.innerHTML)tl.innerHTML=FERRAMENTAS.map(t=>`<div style="display:flex;gap:10px;align-items:center;background:var(--s2);border:1px solid var(--br);border-radius:var(--r);padding:10px 12px;margin-bottom:6px"><div style="width:34px;height:34px;border-radius:8px;background:${t.c}18;border:1px solid ${t.c}33;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${t.c};flex-shrink:0">${t.n.slice(0,2)}</div><div><div style="font-size:13px;font-weight:700">${t.n}</div><div style="font-size:12px;color:var(--t2);margin-top:1px">${t.d}</div></div></div>`).join('');
+  const cs=$('cal-sem');if(cs&&!cs.innerHTML)cs.innerHTML=SEMANA.map(s=>`<div style="display:flex;gap:10px;align-items:flex-start;background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-bottom:6px"><div style="font-size:19px">${s.i}</div><div><div style="font-size:13px;font-weight:700">${s.d}</div><div style="font-size:12px;color:var(--t2);margin-top:2px;line-height:1.5">${s.t}</div></div></div>`).join('');
+  const bn=$('banco');if(bn&&!bn.innerHTML)bn.innerHTML=IDEIAS.map(i=>`<div style="background:var(--s2);border:1px solid var(--line);border-radius:var(--rs);padding:8px 11px;margin-bottom:5px;font-size:13px;color:var(--t2);line-height:1.4">${i}</div>`).join('');
+  const tl=$('tools');if(tl&&!tl.innerHTML)tl.innerHTML=FERRAMENTAS.map(t=>`<div style="display:flex;gap:10px;align-items:center;background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-bottom:6px"><div style="width:34px;height:34px;border-radius:8px;background:${t.c}18;border:1px solid ${t.c}33;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${t.c};flex-shrink:0">${t.n.slice(0,2)}</div><div><div style="font-size:13px;font-weight:700">${t.n}</div><div style="font-size:12px;color:var(--t2);margin-top:1px">${t.d}</div></div></div>`).join('');
 }
 
 /* ═══════ RENDER ═════════════════════════════════ */
@@ -2422,21 +2434,21 @@ function rDash(){
     <div class="kpi"><div class="kpi-l">Prev. 90d</div><div class="kpi-v a">${fmt(prev)}</div></div>`);
   // Avisos
   const inc=arr(DB.shows).filter(s=>s.falta?.length&&s.status!=='cancelado');
-  set('avisos',inc.length?`<div class="card warn" style="margin-bottom:11px"><div style="font-size:13px;font-weight:700;color:var(--am);margin-bottom:7px">⚠️ ${inc.length} show(s) com dados incompletos</div>${inc.map(s=>`<div style="font-size:12px;color:var(--t2);padding:3px 0;border-bottom:1px solid rgba(245,166,35,.15)">📌 <b style="color:var(--tx)">${s.nome}</b> — falta: ${s.falta.join(', ')}</div>`).join('')}</div>`:'');
+  set('avisos',inc.length?`<div class="card warn" style="margin-bottom:11px"><div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:7px">⚠️ ${inc.length} show(s) com dados incompletos</div>${inc.map(s=>`<div style="font-size:12px;color:var(--t2);padding:3px 0;border-bottom:1px solid rgba(245,166,35,.15)">📌 <b style="color:var(--tx)">${s.nome}</b> — falta: ${s.falta.join(', ')}</div>`).join('')}</div>`:'');
   // Resumo
   set('d-resumo',`<div class="card"><div class="sl" style="margin-top:0">💰 Resumo de ${M[mes]}</div>
-    <div class="rrow"><span>Shows (${showsMes.length})</span><span style="color:var(--gr)">+${fmt(recS)}</span></div>
-    <div class="rrow"><span>Outras receitas</span><span style="color:var(--gr)">+${fmt(recO)}</span></div>
-    <div class="rrow"><span>Despesas</span><span style="color:var(--re)">-${fmt(despT)}</span></div>
-    <div class="rrow"><span>Dívidas em aberto</span><span style="color:var(--re)">${fmt(tDiv)}</span></div>
-    <div class="rrow"><span>Saldo</span><b style="color:${saldo>=0?'var(--gr)':'var(--re)'}">${fmt(saldo)}</b></div></div>`);
+    <div class="rrow"><span>Shows (${showsMes.length})</span><span style="color:var(--teal)">+${fmt(recS)}</span></div>
+    <div class="rrow"><span>Outras receitas</span><span style="color:var(--teal)">+${fmt(recO)}</span></div>
+    <div class="rrow"><span>Despesas</span><span style="color:var(--rose)">-${fmt(despT)}</span></div>
+    <div class="rrow"><span>Dívidas em aberto</span><span style="color:var(--rose)">${fmt(tDiv)}</span></div>
+    <div class="rrow"><span>Saldo</span><b style="color:${saldo>=0?'var(--teal)':'var(--rose)'}">${fmt(saldo)}</b></div></div>`);
   // Agenda
   const ag=showsMes.sort((a,b)=>a.data.localeCompare(b.data));
   set('d-agenda',ag.length?ag.map(s=>{
     const dO=new Date(s.data+'T12:00');
     return`<div class="ag" style="${s.data<today()?'opacity:.55':''}">
-      <div class="ag-d"><div class="ag-n" style="color:${s.serie?'var(--vi)':'var(--gr)'}">${dO.getDate()}</div><div class="ag-w">${D[dO.getDay()].slice(0,3)}</div></div>
-      <div style="flex:1"><div class="iname">${s.nome}</div><div class="imeta">${s.hora?s.hora+' · ':''}${s.tipo}${s.valor?' · '+fmt(s.valor):'<span style="color:var(--am)"> · valor pendente</span>'}</div></div>
+      <div class="ag-d"><div class="ag-n" style="color:${s.serie?'var(--vio)':'var(--teal)'}">${dO.getDate()}</div><div class="ag-w">${D[dO.getDay()].slice(0,3)}</div></div>
+      <div style="flex:1"><div class="iname">${s.nome}</div><div class="imeta">${s.hora?s.hora+' · ':''}${s.tipo}${s.valor?' · '+fmt(s.valor):'<span style="color:var(--amber)"> · valor pendente</span>'}</div></div>
       <span class="bdg ${s.status==='recebido'?'g':s.status==='nf'?'b':'a'}">${s.status==='nf'?'NF':s.status}</span>
     </div>`;}).join(''):`<p class="empty">Nenhum show em ${M[mes]}.</p>`);
   // Próximos
@@ -2445,7 +2457,7 @@ function rDash(){
     <div class="item ${s.serie?'iv':'ib'}">
       <div class="ih"><div><div class="iname">${s.nome}</div><div class="imeta">${fmtD(s.data)} ${s.hora?'às '+s.hora:''} · ${s.tipo}</div></div>
       <span class="bdg ${s.serie?'v':'b'}">${s.serie?'Série':'Único'}</span></div>
-      <div class="sg"><div>Bruto<b>${s.valor?fmt(s.valor):'—'}</b></div><div>Líquido<b style="color:var(--gr)">${s.liq?fmt(s.liq):'—'}</b></div><div>Recebimento<b>${fmtD(s.recData)}</b></div></div>
+      <div class="sg"><div>Bruto<b>${s.valor?fmt(s.valor):'—'}</b></div><div>Líquido<b style="color:var(--teal)">${s.liq?fmt(s.liq):'—'}</b></div><div>Recebimento<b>${fmtD(s.recData)}</b></div></div>
     </div>`).join(''):`<p class="empty">Nenhum show próximo.</p>`);
   // Previsão mês a mês — shows pontuais + NFs de séries emitidas
   const porMes={};
@@ -2711,8 +2723,8 @@ function rEq(){
       <div class="ih">
         <div style="flex:1"><div class="iname">${m.nome} <span class="bdg v" style="font-size:9px">${m.fn}</span></div>
           <div class="imeta" style="line-height:1.9;margin-top:4px">
-            ${m.val>0?`Por show: <b style="color:var(--tx)">${fmt(m.val)}</b>${m.perc>0?` <span style="color:var(--vi)">(${m.perc.toFixed(1)}%)</span>`:''}`:''} 
-            ${m.pro>0?`<br>Pró-labore: <b style="color:var(--tx)">${fmt(m.pro)}</b>${m.proP>0?` <span style="color:var(--bl)">(${m.proP.toFixed(1)}%)</span>`:''}`:''}</div>
+            ${m.val>0?`Por show: <b style="color:var(--tx)">${fmt(m.val)}</b>${m.perc>0?` <span style="color:var(--vio)">(${m.perc.toFixed(1)}%)</span>`:''}`:''} 
+            ${m.pro>0?`<br>Pró-labore: <b style="color:var(--tx)">${fmt(m.pro)}</b>${m.proP>0?` <span style="color:var(--sky)">(${m.proP.toFixed(1)}%)</span>`:''}`:''}</div>
         </div>
         <div style="display:flex;gap:6px;align-items:flex-start">
           ${m.wa?`<a href="https://wa.me/55${m.wa.replace(/\D/g,'')}?text=Olá+${encodeURIComponent(m.nome)}!" class="btn wa" style="text-decoration:none" target="_blank">📲</a>`:''}
