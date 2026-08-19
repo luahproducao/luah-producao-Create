@@ -1058,6 +1058,20 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   </div>
 </div>
 
+<!-- MODAL BACKUP E RESTAURO (v17) -->
+<div id="modal-backup" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(5,5,7,.88);backdrop-filter:blur(12px);align-items:flex-end;justify-content:center">
+  <div style="background:var(--s2);border:1px solid var(--line2);border-top-left-radius:20px;border-top-right-radius:20px;padding:22px 18px 36px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800">Backup e restauro</div>
+      <button onclick="fecharBackup()" style="background:var(--s3);border:1px solid var(--line2);border-radius:50%;width:30px;height:30px;color:var(--t2);font-size:16px;cursor:pointer;font-family:Inter;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+    <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px">Os dados deste aparelho são guardados automaticamente todos os dias (últimos 7 dias). Para restaurar, escolha um backup abaixo. <b style="color:var(--tx)">Após restaurar, revise os dados antes de sincronizar.</b></div>
+    <div id="bk-list"></div>
+    <div style="height:10px"></div>
+    <button class="btn ghost" onclick="fecharBackup()">Fechar</button>
+  </div>
+</div>
+
 <!-- MODAL EDITAR LANÇAMENTO -->
 <div id="modal-fin" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(5,5,7,.88);backdrop-filter:blur(12px);align-items:flex-end;justify-content:center">
   <div style="background:var(--s2);border:1px solid var(--line2);border-top-left-radius:20px;border-top-right-radius:20px;padding:22px 18px 36px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
@@ -1148,6 +1162,12 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <button onclick="syncAgora()" style="background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
       <div style="font-size:18px;margin-bottom:6px"></div>
       <div style="font-size:13px;font-weight:600">Sincronizar agora</div>
+    </button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+    <button onclick="abrirBackup()" style="background:var(--s2);border:1px solid rgba(200,180,120,.25);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
+      <div style="font-size:18px;margin-bottom:6px"></div>
+      <div style="font-size:13px;font-weight:600">Backup e restauro</div>
     </button>
   </div>
   <button onclick="closeMore()" style="margin-top:12px;width:100%;background:transparent;border:1px solid var(--line);border-radius:var(--rs);padding:10px;color:var(--t3);font-size:13px;cursor:pointer;font-family:Inter">Fechar</button>
@@ -1276,7 +1296,55 @@ function loadLocal(){
     }
   }catch(e){console.warn('loadLocal erro:',e);}
 }
-function saveLocal(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); }catch(e){} }
+function saveLocal(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); }catch(e){} backupLocal(); }
+
+/* ─── BACKUP LOCAL (v17) — versões diárias para nunca perder dados ─── */
+const BK_KEY='luah-backups';
+function temDados(d){ d=d||DB; return (Object.keys(d.shows||{}).length>0)||(Object.keys(d.fin||{}).length>0); }
+function listBackups(){ try{ return JSON.parse(localStorage.getItem(BK_KEY)||'[]'); }catch(e){ return []; } }
+function backupLocal(){
+  try{
+    if(!temDados()) return;
+    const hoje=new Date().toISOString().slice(0,10);
+    const bk=localStorage.getItem(STORAGE_KEY);
+    if(!bk) return;
+    let list=listBackups();
+    // substituir/atualizar backup do dia (evita duplicar)
+    // nunca substituir um backup com dados por um estado vazio (proteção contra perda)
+    const atual=list.find(x=>x.dia===hoje);
+    if(atual && temDados(JSON.parse(atual.data)) && !temDados(JSON.parse(bk))){ return; }
+    list=list.filter(x=>x.dia!==hoje);
+    list.push({dia:hoje,ts:Date.now(),data:bk});
+    list=list.sort((a,b)=>b.ts-a.ts).slice(0,7);
+    localStorage.setItem(BK_KEY,JSON.stringify(list));
+  }catch(e){}
+}
+function restoreFromBackup(ts){
+  const list=listBackups();
+  const b=list.find(x=>x.ts===ts);
+  if(!b){ toast('Backup não encontrado','err'); return; }
+  const msg='Restaurar os dados salvos em '+fmtD(b.dia)+'?\n\nOs dados atuais deste aparelho serão substituídos e uma cópia será guardada antes.';
+  if(!confirm(msg)) return;
+  const anterior=localStorage.getItem(STORAGE_KEY);  // cópia do estado atual antes de qualquer backup
+  backupLocal();
+  try{
+    const parsed=JSON.parse(b.data);
+    DB={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...parsed};
+    garantirArtista();
+    saveLocal();
+    // se o backupLocal gravou o estado vazio no lugar do backup bom do dia, repor a cópia anterior
+    const hoje2=new Date().toISOString().slice(0,10);
+    const lst=listBackups();
+    const bd=lst.find(x=>x.dia===hoje2);
+    if(anterior && temDados(JSON.parse(anterior)) && bd && !temDados(JSON.parse(bd.data))){
+      const restored=lst.filter(x=>x.ts!==bd.ts).concat({dia:hoje2,ts:bd.ts,data:anterior}).sort((a,c)=>c.ts-a.ts).slice(0,7);
+      localStorage.setItem(BK_KEY,JSON.stringify(restored));
+    }
+    render();
+    syncUI(false,'backup restaurado '+fmtD(b.dia));
+    toast('Backup restaurado: '+fmtD(b.dia)+' (não sincronizado ainda — revise antes de sincronizar)');
+  }catch(e){ toast('Erro ao restaurar','err'); }
+}
 
 // Enfileira um PUT e processa a fila sequencialmente com retry
 let _saving = false;
@@ -1335,24 +1403,31 @@ async function pullFromCloud(){
     if(ver < LU.cloudVer) return false; // nuvem mais antiga: não aceitar
     const r = await fetch(`${JB_BASE}/b/${bin}/latest`,{headers:{'X-Master-Key':key}});
     if(!r.ok){
-      // 404 = bin criado mas vazio: aceitar o estado vazio para que o aparelho
-      // com dados locais os envie (cenário 2.º aparelho sem dados)
-      if(r.status === 404){ DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...DB}; cleanQueue(); LU.cloudVer = ver; persistLU(); garantirArtista(); saveLocal(); return 'vazio'; }
+      // 404 = bin criado mas vazio — NUNCA substituir dados locais por estado vazio
+      if(r.status === 404){
+        if(temDados()){ syncUI(false,'protegido'); return 'protegido'; }
+        DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...DB}; cleanQueue(); LU.cloudVer = ver; persistLU(); garantirArtista(); saveLocal(); return 'vazio';
+      }
       return false;
     }
     const j = await r.json();
     const d = j.record;
     if(!d || typeof d !== 'object') return false;
+    const nuvemVazia = !temDados(d);
+    // PROTEÇÃO (v17): nunca substituir dados locais por banco vazio na nuvem
+    if(nuvemVazia && temDados()){ syncUI(false,'protegido'); return 'protegido'; }
     // Substituir completamente — deletados não voltam
+    const antes = JSON.stringify(DB);
     DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...d};
     cleanQueue();
     LU.cloudVer = ver;
     persistLU();
     garantirArtista();
     saveLocal();
+    if(antes === JSON.stringify(d)) { syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})); }
     const m = $('eqmed'); if(m && DB.meta?.mediaShow) m.value = DB.meta.mediaShow;
     render();
-    return true;
+    return nuvemVazia ? 'vazio' : true;
   }catch(e){ return false; }
 }
 
@@ -1361,9 +1436,10 @@ async function atualizarApp(){
   if(btn){btn.style.transform='rotate(720deg)';setTimeout(()=>{btn.style.transition='none';btn.style.transform='';setTimeout(()=>btn.style.transition='transform .5s',50);},500);}
   syncUI(false,'sincronizando…');
   const pushed = await pullFromCloud();
-  if(pushed){ toast(pushed==='vazio' && (Object.keys(DB.shows||{}).length||Object.keys(DB.fin||{}).length) ? 'A enviar dados deste aparelho…' : 'Dados atualizados!'); }
+  if(pushed==='protegido'){ toast('Dados locais protegidos — o banco na nuvem está vazio. Seus dados não foram apagados. Revisando…'); }
+  else if(pushed){ toast(pushed==='vazio' && (Object.keys(DB.shows||{}).length||Object.keys(DB.fin||{}).length) ? 'A enviar dados deste aparelho…' : 'Dados atualizados!'); }
   else { toast('A reenviar dados locais…','err'); syncUI(false,'reenviando'); }
-  if(pushed==='vazio' && (Object.keys(DB.shows||{}).length||Object.keys(DB.fin||{}).length)){ await save(); toast('Dados deste aparelho enviados à nuvem'); }
+  if((pushed==='vazio'||pushed==='protegido') && (Object.keys(DB.shows||{}).length||Object.keys(DB.fin||{}).length)){ await save(); toast('Dados deste aparelho enviados à nuvem'); }
 }
 
 async function carregarJB(){
@@ -1404,6 +1480,8 @@ async function carregarJB(){
       if(!r.ok) return;
       const j = await r.json(); const d = j.record;
       if(!d || typeof d !== 'object') return;
+      // PROTEÇÃO (v17): nunca substituir dados locais por banco vazio na nuvem
+      if(!temDados(d) && temDados()){ syncUI(false,'protegido'); return; }
       DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...d};
       cleanQueue();
       LU.cloudVer = ver;
@@ -1435,9 +1513,19 @@ async function conectarJSONBin(){
         btn.textContent='Conectar e salvar dados'; btn.disabled=false;
         return;
       }
+      // AVISO (v17): se o bin na nuvem já tem dados, avisar antes de usar
+      let jchk=null; try{ jchk = await chk.json(); }catch(e){}
+      if(jchk && jchk.record && temDados(jchk.record)){
+        const ns = Object.keys(jchk.record.shows||{}).length;
+        const nf = Object.keys(jchk.record.fin||{}).length;
+        if(!confirm('Este banco na nuvem já tem dados ('+ns+' shows, '+nf+' lançamentos).\n\nDeseja conectar e MESCLAR? Os dados deste aparelho serão enviados ao banco e os dados da nuvem substituirão os locais na sincronização.')){
+          btn.textContent='Conectar e salvar dados'; btn.disabled=false; return;
+        }
+      }
       localStorage.setItem('luah_jb_bin', binId);
     }else{
-      // Criar um bin novo com os dados atuais
+      // Criar um bin novo com os dados atuais (v17: confirmar antes de criar)
+      if(!confirm('Vai criar um banco NOVO na nuvem e enviar os dados deste aparelho.\n\nSe você já tem dados em outro aparelho, CANCELE e cole o ID do banco de lá (em Mais → Conexão do outro aparelho).\n\nDeseja continuar?')){ btn.textContent='Conectar e salvar dados'; btn.disabled=false; return; }
       const r = await fetch(`${JB_BASE}/b`,{
         method:'POST',
         headers:{'Content-Type':'application/json','X-Master-Key':key,'X-Bin-Name':'luah-producao','X-Bin-Private':'false'},
@@ -1501,6 +1589,16 @@ async function conectarJSONBin(){
     err.style.display='block';
     btn.textContent='Conectar e salvar dados'; btn.disabled=false;
   }
+}
+
+/* ─── MODAL BACKUP E RESTAURO (v17) ────────────────── */
+function abrirBackup(){ closeMore(); $('modal-backup').style.display='flex'; renderBackupList(); }
+function fecharBackup(){ $('modal-backup').style.display='none'; }
+function renderBackupList(){
+  const c = $('bk-list');
+  const list = listBackups();
+  if(!list.length){ c.innerHTML='<div style="font-size:13px;color:var(--t2);padding:14px 4px">Ainda não há backups. Os backups são guardados automaticamente todos os dias em que houver dados.</div>'; return; }
+  c.innerHTML = list.map(b => '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 12px;background:var(--s3);border:1px solid var(--line);border-radius:var(--rs);margin-bottom:8px"><div><div style="font-size:13px;font-weight:600;color:var(--tx)">Backup de '+fmtD(b.dia)+'</div><div style="font-size:11px;color:var(--t2)">'+new Date(b.ts).toLocaleString('pt-BR')+'</div></div><button class="btn pri" style="font-size:12px;padding:8px 12px" onclick="restoreFromBackup('+b.ts+')">Restaurar</button></div>').join('');
 }
 
 function pularFbSetup(){
