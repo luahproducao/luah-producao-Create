@@ -1065,7 +1065,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800">Backup e restauro</div>
       <button onclick="fecharBackup()" style="background:var(--s3);border:1px solid var(--line2);border-radius:50%;width:30px;height:30px;color:var(--t2);font-size:16px;cursor:pointer;font-family:Inter;display:flex;align-items:center;justify-content:center">×</button>
     </div>
-    <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px">Os dados deste aparelho são guardados automaticamente todos os dias (últimos 7 dias). Para restaurar, escolha um backup abaixo. <b style="color:var(--tx)">Após restaurar, revise os dados antes de sincronizar.</b></div>
+    <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:12px">Os dados deste aparelho são guardados automaticamente todos os dias (últimos 365 dias). Para restaurar, escolha um backup abaixo. <b style="color:var(--tx)">Após restaurar, revise os dados antes de sincronizar.</b></div>
     <div id="bk-list"></div>
     <div style="height:10px"></div>
     <button class="btn ghost" onclick="fecharBackup()">Fechar</button>
@@ -1315,7 +1315,7 @@ function backupLocal(){
     if(atual && temDados(JSON.parse(atual.data)) && !temDados(JSON.parse(bk))){ return; }
     list=list.filter(x=>x.dia!==hoje);
     list.push({dia:hoje,ts:Date.now(),data:bk});
-    list=list.sort((a,b)=>b.ts-a.ts).slice(0,7);
+    list=list.sort((a,b)=>b.ts-a.ts).slice(0,365);
     localStorage.setItem(BK_KEY,JSON.stringify(list));
   }catch(e){}
 }
@@ -1337,7 +1337,7 @@ function restoreFromBackup(ts){
     const lst=listBackups();
     const bd=lst.find(x=>x.dia===hoje2);
     if(anterior && temDados(JSON.parse(anterior)) && bd && !temDados(JSON.parse(bd.data))){
-      const restored=lst.filter(x=>x.ts!==bd.ts).concat({dia:hoje2,ts:bd.ts,data:anterior}).sort((a,c)=>c.ts-a.ts).slice(0,7);
+      const restored=lst.filter(x=>x.ts!==bd.ts).concat({dia:hoje2,ts:bd.ts,data:anterior}).sort((a,c)=>c.ts-a.ts).slice(0,365);
       localStorage.setItem(BK_KEY,JSON.stringify(restored));
     }
     render();
