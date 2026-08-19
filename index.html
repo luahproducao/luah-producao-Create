@@ -258,6 +258,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 .btn.sm.on{background:var(--gold);color:#050507;border:none}
 .btn.sm.g{background:var(--s1);color:var(--teal);border:1px solid rgba(217,192,136,.25)}
 .btn.sm.del{background:var(--s1);color:var(--rose);border:1px solid rgba(176,98,80,.3)}
+.btn.sm.edit{background:var(--s1);color:var(--gold);border:1px solid rgba(200,180,120,.35)}
 .brow{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
 
 /* ─── BADGE ──────────────────────────────────────── */
@@ -323,23 +324,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 .rrow{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)}
 .rrow:last-child{border-bottom:none;color:var(--tx);font-weight:700;font-size:14px}
 
-/* ─── MIC ────────────────────────────────────────── */
-.mic{
-  width:68px;height:68px;border-radius:50%;
-  background:var(--s2);
-  border:1px solid rgba(200,180,120,.4);
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;margin:0 auto;
-  transition:transform .2s,border-color .2s;
-}
-.mic:active{transform:scale(.95)}
-.mic.on{
-  background:var(--s3);
-  border-color:rgba(176,98,80,.6);
-  animation:mpulse 1.2s ease-in-out infinite;
-}
-.mic svg{width:26px;height:26px;fill:var(--gold)}
-.mic.on svg{fill:var(--rose)}
+
 @keyframes mpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
 
 /* ─── SCORE ──────────────────────────────────────── */
@@ -762,7 +747,8 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
         <div class="fg"><label>% pró-labore da receita</label><input id="mproP" type="number" placeholder="ex: 5" step="0.1" inputmode="decimal"></div>
       </div>
       <div class="fg"><label>WhatsApp (com DDD)</label><input id="mwa" type="tel" placeholder="71999999999"></div>
-      <button class="btn pri" onclick="addMembro()">Adicionar à equipe</button>
+      <button class="btn pri" id="btn-membro" onclick="addMembro()">Adicionar à equipe</button>
+      <button class="btn sm ghost" id="cancel-edit-mb" style="display:none;margin-left:6px" onclick="cancelarEditarMembro()">Cancelar</button>
     </div>
   </div>
   <div id="ep" style="display:none">
@@ -803,13 +789,21 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 <!-- FINANCEIRO -->
 <div id="v-fin" class="view">
   <div class="itabs">
-    <button class="itab on" onclick="sub('fm',this)">Por mensagem</button>
+    <button class="itab on" onclick="sub('fm',this)">Texto inteligente</button>
     <button class="itab"    onclick="sub('fma',this)">Manual</button>
     <button class="itab"    onclick="sub('fd',this)">Dívidas</button>
     <button class="itab"    onclick="sub('fs',this)"> Saúde</button>
   </div>
   <div id="fm">
     <div class="card glass">
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px">Lançamento por texto</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6">Escreva como fala — o sistema entende valor, cartão, loja, quem comprou e parcelas:<br><em style="color:var(--vio2)">"cartão c6 compra de computador de 5.800 parcelado em 12"</em> · <em style="color:var(--vio2)">"pix recebido 3200 da turnê"</em> · <em style="color:var(--vio2)">"nubank 480 por mim na loja outback"</em></div>
+      <textarea id="ft-txt" rows="4" placeholder="Ex: cartão c6 compra de computador de 5.800 parcelado em 12"></textarea>
+      <div class="sp"></div>
+      <button class="btn pri" onclick="interpretarFinTXT()">Interpretar</button>
+    </div>
+    <div id="ft-prev"></div>
+<div class="card glass">
       <div style="font-size:15px;font-weight:700;margin-bottom:6px">Cole seus débitos aqui</div>
       <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6">Qualquer formato — um por linha ou separado por vírgula:<br><em style="color:var(--vio2)">"Aluguel 1500, Gasolina 250, Luz 180"</em></div>
       <textarea id="msgtxt" rows="6" placeholder="Aluguel 1500&#10;Gasolina 250&#10;Cartão Nubank 380&#10;Luz 160&#10;Internet 99,90&#10;App distribuição 25"></textarea>
@@ -916,57 +910,6 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   <div id="rel-body"></div>
   <div class="sp"></div>
   <button class="btn wa" style="width:100%" onclick="waRel()"> Compartilhar no WhatsApp</button>
-</div>
-
-<!-- VOZ -->
-<div id="v-voz" class="view">
-  <div class="card" style="text-align:center;padding:24px 18px">
-    <div style="font-size:13px;color:var(--t2);margin-bottom:6px;line-height:1.6">
-      Funciona no <b style="color:var(--tx)">Android e iPhone</b>.<br>
-      Grave e o app identifica os dados do show.
-    </div>
-    <div style="font-size:12px;color:var(--t3);margin-bottom:20px;background:var(--s3);border-radius:var(--rs);padding:8px 12px;line-height:1.6">
-      Ex: <em style="color:var(--vio2)">"Casamento Silva dia 20 de junho valor 2000 reais 30 dias"</em>
-    </div>
-
-    <!-- Botão gravar -->
-    <div class="mic" id="micbtn" onclick="iniciarGravacao()" style="position:relative">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:28px;height:28px;stroke:var(--vio2);stroke-width:2;stroke-linecap:round">
-        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-        <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
-      </svg>
-    </div>
-    <p id="micst" style="font-size:13px;color:var(--t2);margin-top:16px">Toque para gravar</p>
-
-    <!-- Barra de progresso de gravação -->
-    <div id="rec-bar" style="display:none;margin-top:12px">
-      <div style="height:4px;background:var(--line);border-radius:4px;overflow:hidden">
-        <div id="rec-prog" style="height:4px;background:var(--rose);border-radius:4px;width:0%;transition:width .1s"></div>
-      </div>
-      <div id="rec-timer" style="font-size:12px;color:var(--t3);margin-top:5px">0s</div>
-    </div>
-
-    <!-- Resultado transcrição -->
-    <div id="voz-txt" style="display:none;margin-top:12px;background:var(--s3);border:1px solid var(--line);border-radius:var(--rs);padding:12px;font-size:14px;text-align:left;color:var(--t2);line-height:1.6"></div>
-
-    <!-- Processando -->
-    <div id="voz-loading" style="display:none;margin-top:12px;font-size:13px;color:var(--vio2)">
-      ⏳ Processando áudio…
-    </div>
-
-    <!-- Preview do show -->
-    <div id="voz-prev" style="display:none"></div>
-    <button class="btn pri" id="voz-ok" style="display:none;margin-top:12px" onclick="salvarVoz()">Confirmar e salvar show</button>
-    <button class="btn ghost" id="voz-refazer" style="display:none;margin-top:8px;font-size:13px" onclick="refazerVoz()">↻ Gravar novamente</button>
-  </div>
-
-  <!-- Fallback: digitar manualmente -->
-  <div class="card" style="margin-top:0">
-    <div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Ou descreva em texto</div>
-    <textarea id="voz-texto" rows="3" placeholder="Ex: Casamento Silva dia 20 de junho valor 2000 reais 30 dias"></textarea>
-    <div style="height:8px"></div>
-    <button class="btn pri" onclick="processarTextoVoz()">Identificar e criar show</button>
-  </div>
 </div>
 
 <!-- CONTEÚDO -->
@@ -1160,10 +1103,6 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <div style="font-size:18px;margin-bottom:6px"></div>
       <div style="font-size:13px;font-weight:600">Relatório</div>
     </button>
-    <button onclick="goFromMore('voz')" style="background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
-      <div style="font-size:18px;margin-bottom:6px"></div>
-      <div style="font-size:13px;font-weight:600">Voz</div>
-    </button>
     <button onclick="goFromMore('dig')" style="background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
       <div style="font-size:18px;margin-bottom:6px"></div>
       <div style="font-size:13px;font-weight:600">Conteúdo</div>
@@ -1195,7 +1134,7 @@ const D=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 
 let DB={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}};
 let _syncInterval=null;
-let vozData=null,mediaRec=null,audioChunks=[],recTimer=null,recSecs=0,_syncTimer=null,idxIdeia=0;
+let _syncTimer=null,idxIdeia=0;
 
 /* ═══════ UTILS ════════════════════════════════════ */
 const fmt=v=>'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1803,7 +1742,7 @@ function gerarSerie(sid){
     if(!s.ferias.includes(cur.getMonth())&&!s.cancelados.includes(ds)){
       const id=uid();
       const pz=isNaN(+s.prazo)?30:+s.prazo;
-      DB.shows[id]={id,nome:s.nome,data:ds,hora:s.hora,valor:s.valor,liq:s.liq,imp:s.imp,prazo:pz,tipo:s.tipo,obs:'',status:'agendado',recData:addDays(ds,pz),serie:true,serieId:sid,falta:[]};
+      DB.shows[id]={id,nome:s.nome,data:ds,hora:s.hora,valor:s.valor,liq:s.liq,imp:s.imp,prazo:pz,tipo:s.tipo,obs:'',status:'agendado',recData:addDays(ds,pz),serie:true,serieId:sid,falta:[],escalacao:(s.escalacao||[]).map(x=>({...x}))};
     }
     cur.setDate(cur.getDate()+7);n++;
   }
@@ -1831,15 +1770,58 @@ function waEquipe(showId){
 }
 
 /* ═══════ EQUIPE ════════════════════════════════ */
+let editMembroId=null; // id do membro em edição (null = criando novo)
 function calcPMb(){const v=+$('mv').value||0,ref=+$('mref').value||0;if(v&&ref)$('mp').value=((v/ref)*100).toFixed(2);}
 function calcVMb(){const p=+$('mp').value||0,ref=+$('mref').value||0;if(p&&ref)$('mv').value=((p/100)*ref).toFixed(2);}
+function limparFormMembro(){editMembroId=null;['mn','mv','mp','mref','mpro','mproP','mwa'].forEach(i=>$(i).value='');$('mf').selectedIndex=0;const bt=$('btn-membro');if(bt){bt.textContent='Adicionar à equipe';bt.onclick=addMembro;}const cv=$('cancel-edit-mb');if(cv)cv.style.display='none';}
+function editarMembro(id){
+  const m=DB.equipe[id];if(!m)return;
+  editMembroId=id;
+  $('mn').value=m.nome||'';$('mf').value=m.fn||'';$('mv').value=m.val||0;$('mp').value=m.perc||0;$('mref').value=m.ref||0;$('mpro').value=m.pro||0;$('mproP').value=m.proP||0;$('mwa').value=m.wa||'';
+  const bt=$('btn-membro');if(bt){bt.textContent='Salvar alteração';bt.onclick=salvarMembro;}
+  const cv=$('cancel-edit-mb');if(cv)cv.style.display='inline-flex';
+  $('mn').focus();
+  // rolar o formulário até a secção da equipe (se estiver fora da vista)
+  const form=$('mn').closest('.card')||$('mn').parentElement.parentElement;
+  if(form)form.scrollIntoView({behavior:'smooth',block:'start'});
+  toast('Editando '+m.nome+' — altere e toque em Salvar');
+}
+function cancelarEditarMembro(){limparFormMembro();toast('Edição cancelada');}
+// Propagar a edição do membro aos shows futuros: escalacao (mantém função/valor atualizados) e shows futuros das séries
+function propagarMembroEditado(id,dadosNovos){
+  const t=today();
+  Object.values(DB.shows||{}).forEach(sh=>{
+    if((sh.escalacao||[]).some(x=>x.mbId===id)){
+      sh.escalacao.forEach(x=>{ if(x.mbId===id){ x.fn=dadosNovos.fn; x.nome=dadosNovos.nome; x.val=dadosNovos.val; }});
+    }
+    // série criada com o membro na equipa: o modelo da série mantém a equipRef
+    if(sh.serieId){
+      const se=DB.series&&DB.series[sh.serieId];
+      if(se&&(se.equipRef||[]).includes(id)){ /* série mantém só os ids; os valores vêm de DB.equipe — nada a fazer */ }
+    }
+  });
+  if(DB.series){Object.values(DB.series).forEach(se=>{
+    (se.equipeIds||[]); // ids apenas
+    (se.escalacao||[]).forEach(x=>{ if(x.mbId===id){ x.fn=dadosNovos.fn; x.nome=dadosNovos.nome; x.val=dadosNovos.val; }});
+  });}
+}
+async function salvarMembro(){
+  const nome=$('mn').value.trim();if(!nome){toast('Informe o nome','err');return;}
+  if(!editMembroId){ await addMembro(); return; }
+  const d=DB.equipe[editMembroId];
+  const novo={id:d.id,nome,fn:$('mf').value,val:+$('mv').value||0,perc:+$('mp').value||0,ref:+$('mref').value||0,pro:+$('mpro').value||0,proP:+$('mproP').value||0,wa:$('mwa').value.trim()};
+  DB.equipe[editMembroId]=novo;
+  propagarMembroEditado(editMembroId,novo);
+  limparFormMembro();
+  await save();render();toast('Membro atualizado! Alterações aplicadas nos shows futuros.');
+}
 async function addMembro(){
   const nome=$('mn').value.trim();if(!nome){toast('Informe o nome','err');return;}
   const id=uid();
   DB.equipe[id]={id,nome,fn:$('mf').value,val:+$('mv').value||0,perc:+$('mp').value||0,ref:+$('mref').value||0,pro:+$('mpro').value||0,proP:+$('mproP').value||0,wa:$('mwa').value.trim()};
-   await save();['mn','mv','mp','mref','mpro','mproP','mwa'].forEach(i=>$(i).value='');toast('Membro adicionado!');render();
+   await save();limparFormMembro();toast('Membro adicionado!');render();
 }
-async function delMembro(id){if(!confirm('Remover?'))return;delete DB.equipe[id];await save();render();toast('Membro removido');}
+async function delMembro(id){if(!confirm('Remover?'))return;delete DB.equipe[id];if(editMembroId===id)limparFormMembro();await save();render();toast('Membro removido');}
 async function addPag(){
   const mbId=$('pmb').value,val=+$('pv').value||0;
   if(!mbId||!val){toast('Selecione membro e valor','err');return;}
@@ -1922,6 +1904,131 @@ function pgtoTag(pgto,parc){
   const colors={'pix':'var(--teal)','dinheiro':'var(--gold)','debito':'var(--sky)','credito-vista':'var(--vio2)','credito-parcelado':'var(--vio2)'};
   return`<span style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(200,180,120,.12);color:${colors[pgto]||'var(--t2)'};border:1px solid rgba(200,180,120,.2)">${labels[pgto]||pgto}</span>`;
 }
+/* ═══════ FINANÇAS — TEXTO INTELIGENTE (v9) ══════════ */
+const FINTX_MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const FINTX_MV={};FINTX_MESES.forEach((m,i)=>FINTX_MV[m]=i+1);
+const FINTX_BANCOS=[
+  {re:/c6[\s-]?(bank|cartão|cartao)?/i,nome:'C6'},
+  {re:/nubank|\bnu\b/i,nome:'Nubank'},
+  {re:/\binter\b/i,nome:'Banco Inter'},
+  {re:/itaú|itau/i,nome:'Itaú'},
+  {re:/bradesco/i,nome:'Bradesco'},
+  {re:/santander/i,nome:'Santander'},
+  {re:/banco do brasil|\bbb\b/i,nome:'BB'},
+  {re:/\bcaixa\b|cef\b/i,nome:'Caixa'},
+  {re:/sicredi/i,nome:'Sicredi'},
+  {re:/picpay/i,nome:'PicPay'},
+  {re:/\boriginal\b/i,nome:'Original'},
+  {re:/\bnext\b/i,nome:'Next'},
+  {re:/\bpan\b/i,nome:'Pan'},
+];
+const FINTX_STOP=new Set(['c6','nu','de','do','da','das','dos','dum','duma','com','por','para','pra','na','no','nas','nos','em','a','o','os','as','um','uma','e','que','não','nao','todo','toda','todos','todas','hoje']);
+function fintxLimparNome(n){return n.replace(/[\s,;.-]+/g,' ').split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).filter(w=>w&&!FINTX_STOP.has(w.toLowerCase())).join(' ').trim()||'Lançamento';}
+function parseFinTXT(t0,opts={}){
+  const t=t0.trim().toLowerCase();
+  let tipo='desp';
+  if(/receita|entrada|recebi|recebimento|recebida|pagamento recebido|ganhei|recebemos/i.test(t))tipo='rec';
+  let comprador=null;
+  const cm=t.match(/(?:comprad[oa]s?\s+)?por\s+(\S+(?:\s+\S+){0,2}?)\s+(?:na\s+loja|da\s+loja|de\s+\d|em\s+\d|$)/i);
+  if(cm)comprador=cm[1].trim();
+  let loja=null;
+  const lm=t.match(/(?:na\s+|da\s+)?loj(?:a|inha)\s+(\S+(?:\s+\S+){0,2}?)\s*(?:de\s+\d|e\s+\d|$)/i);
+  if(lm)loja=lm[1].trim();
+  const vals=[...t.matchAll(/\d{1,3}(?:\.\d{3})+(?:[.,]\d{1,2})?|\d+([.,]\d{1,2})?/g)].map(m=>m[0]);
+  let valor=0;
+  for(const raw of vals){const v=parseFloat(raw.replace(/\./g,'').replace(',','.'));if(v>valor)valor=v;}
+  let banco=null;
+  for(const b of FINTX_BANCOS){if(b.re.test(t)){banco=b.nome;break;}}
+  const temCartao=/cart[aã]o/i.test(t)||banco;
+  let parc=null;
+  const pm=t.match(/parcelad[oa]s?\s+(?:em\s+)?(\d{1,2})\s*(?:vezes?|x)?|(\d{1,2})\s*x\s*parcelad[oa]s?|em\s+(\d{1,2})\s+(?:meses|parcelas|vezes)/i);
+  if(pm)parc=+(pm[1]||pm[2]||pm[3]);
+  let pgto='';
+  if(temCartao||banco)pgto=parc&&parc>=2?'credito-parcelado':'credito-vista';
+  else if(/pix/i.test(t))pgto='pix';
+  else if(/dinheiro/i.test(t))pgto='dinheiro';
+  else if(/débito|debito/i.test(t))pgto='debito';
+  let dia=null,mesInicio=null;
+  const dm=t.match(/(?:todo\s+)?dia\s+(\d{1,2})/i);
+  if(dm)dia=+dm[1];
+  if(/todo\s+dia/i.test(t)&&!dia)dia=10;
+  const mm=t.match(/\b(janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/i);
+  if(mm)mesInicio=FINTX_MV[mm[1].toLowerCase()];
+  else if(/proximo mes|próximo mês|mes que vem|mês que vem|no proximo|no próximo/i.test(t)){const d=new Date();mesInicio=d.getMonth()+2;if(mesInicio>12)mesInicio=1;}
+  let nome=t0.trim();
+  nome=nome.replace(/parcelad[oa]s?\s+(?:em\s+)?\d{1,2}\s*(?:vezes?|x)?/gi,'')
+           .replace(/\d{1,2}\s*x\s*parcelad[oa]s?/gi,'')
+           .replace(/em\s+\d{1,2}\s+(?:meses|parcelas|vezes)/gi,'')
+           .replace(/(?:comprad[oa]s?\s+)?por\s+\S+(?:\s+\S+){0,2}?/gi,'')
+           .replace(/(?:na\s+|da\s+)?loj(?:a|inha)\s+\S+(?:\s+\S+){0,2}?/gi,'')
+           .replace(/\b(?:janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/gi,'')
+           .replace(/(?:todo\s+)?dia\s+\d{1,2}/gi,'')
+           .replace(/proximo mes|próximo mês|mes que vem|mês que vem|no proximo|no próximo/gi,'')
+           .trim();
+  nome=fintxLimparNome(nome);
+  nome=nome.replace(new RegExp('cartão|cartao|\\bc6\\b|\\bnu\\b|nubank|\\binter\\b|itaú|itau|bradesco|santander|\\bpan\\b|\\bbc\\b|caixa|sicredi|picpay|\\boriginal\\b|\\bnext\\b','gi'),'');
+  nome=nome.replace(new RegExp('receita|entrada|recebi|recebimento|recebida|pagamento recebido|ganhei|\\bdia\\b|\\btodo\\b|\\bmês\\b|\\bmes\\b|\\bno\\b|\\bem\\b','gi'),'');
+  nome=nome.replace(/(?:^|\s)(?:os|as|do|da|dos|das|um|uma|dum|duma|de|com|por|para|pra|na|nas|nos)(?=\s|$)/gi,' ')
+           .replace(/(?:^|\s)(?:a|o)(?=\s|$)/g,' ')
+           .replace(/\d[\d\.,]*/g,'').trim();
+  nome=nome.replace(/\s+/g,' ').split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).filter(w=>w).join(' ').trim()||'Lançamento';
+  let desc=nome;
+  if(banco&&!nome.toLowerCase().startsWith(banco.toLowerCase()))desc=`${banco} — ${nome}`;
+  if(comprador)desc+=` · comprado por ${comprador}`;
+  if(loja)desc+=` · loja ${loja}`;
+  return{tipo,valor,desc,nome,pgto,parc,banco,comprador,loja,dia,mesInicio,valido:valor>0};
+}
+function gerarParcelasFin(txt,opts={}){
+  const p=parseFinTXT(txt,opts);
+  if(!p.valido)return{erro:'Não identifiquei um valor. Ex: "cartão c6 compra de computador de 5.800 parcelado em 12"'};
+  const hoje=new Date();
+  let mesBase=p.mesInicio!==null?p.mesInicio-1:hoje.getMonth();
+  let anoBase=(p.mesInicio!==null&&p.mesInicio-1<hoje.getMonth())?hoje.getFullYear()+1:hoje.getFullYear();
+  const dia=p.dia||10;
+  const n=p.parc&&p.parc>=2?p.parc:1;
+  const valorP=+(p.valor/n).toFixed(2);
+  const parcelas=[];
+  for(let i=0;i<n;i++){let m=mesBase+i,a=anoBase;if(m>11){m-=12;a++;}
+    const data=`${a}-${String(m+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+    parcelas.push({tipo:p.tipo,valor:valorP,desc:n>1?`${p.desc} (${i+1}/${n})`:p.desc,data,cat:p.banco?'Cartão de crédito':'Outro',rec:p.tipo==='rec'?'receita':'variavel',pgto:p.pgto,parc:n>1?n:null});}
+  return{tipo:p.tipo,valor:p.valor,desc:p.desc,pgto:p.pgto,parc:n,banco:p.banco,dia,mesInicio:mesBase+1,anoInicio:anoBase,parcelas};
+}
+function interpretarFinTXT(){
+  const txt=$('ft-txt').value.trim();if(!txt){toast('Escreva o lançamento. Ex: "cartão c6 compra de computador de 5.800 parcelado em 12"','err');return;}
+  const r=gerarParcelasFin(txt);
+  if(r.erro){toast(r.erro,'err');return;}
+  const ini=`${FINTX_MESES[r.mesInicio-1]}/${r.anoInicio}`;
+  const pgLabel={'pix':'Pix','dinheiro':' Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':`Crédito ${r.parc}x`};
+  const pg=r.pgto?(pgLabel[r.pgto]+(r.banco?` · ${r.banco}`:'')):(r.banco?r.banco:'Sem forma de pagamento');
+  const resumo=r.parcelas.length>1
+    ?`<div style="display:flex;gap:8px">
+        <div style="flex:1;background:rgba(200,180,120,.08);border:1px solid rgba(200,180,120,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--gold);font-weight:700;text-transform:uppercase">Valor total</div><div style="font-size:18px;font-weight:800;color:var(--gold)">${fmt(r.valor)}</div></div>
+        <div style="flex:1;background:rgba(200,180,120,.08);border:1px solid rgba(200,180,120,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--gold);font-weight:700;text-transform:uppercase">${r.parcelas.length} parcelas</div><div style="font-size:18px;font-weight:800;color:var(--gold)">${fmt(r.parcelas[0].valor)}</div></div>
+        <div style="flex:1;background:rgba(200,180,120,.08);border:1px solid rgba(200,180,120,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--gold);font-weight:700;text-transform:uppercase">${fmtD(r.parcelas[0].data)}</div><div style="font-size:12px;font-weight:700;color:var(--t2);margin-top:3px">${fmtD(r.parcelas[r.parcelas.length-1].data)}</div></div>
+      </div>`
+    :`<div style="background:rgba(200,180,120,.08);border:1px solid rgba(200,180,120,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:13px;font-weight:700">${pg} · ${fmtD(r.parcelas[0].data)}</div><div style="font-size:18px;font-weight:800;color:var(--gold);margin-top:3px">${fmt(r.valor)}</div></div>`;
+  window._finTxtPend=r.parcelas;
+  $('ft-prev').innerHTML=`
+    <div class="card" style="margin-top:11px;border-color:rgba(200,180,120,.25)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">${r.parcelas.length} lançamento(s) — ${pg}</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:11px">"${txt}"<br>${r.parcelas.length>1?`Parcelas mensais de <b style="color:var(--gold)">${fmt(r.parcelas[0].valor)}</b> a partir de <b style="color:var(--gold)">${ini}</b>, dia ${r.dia}.`:`Lançamento único de <b style="color:var(--gold)">${fmt(r.valor)}</b> para <b style="color:var(--gold)">${fmtD(r.parcelas[0].data)}</b>.`}</div>
+      ${r.parcelas.slice(0,6).map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--line)"><span>${p.desc}</span><b style="color:${p.tipo==='rec'?'var(--teal)':'var(--rose)'}">${p.tipo==='rec'?'+':'-'}${fmt(p.valor)}</b></div>`).join('')}
+      ${r.parcelas.length>6?`<div style="font-size:11px;color:var(--t3);padding:4px 0">… e mais ${r.parcelas.length-6} parcelas</div>`:''}
+      <div class="sp" style="height:6px"></div>${resumo}
+      <button class="btn pri" onclick="confirmarFinTXT()" style="margin-top:11px">Confirmar ${r.parcelas.length} lançamento(s)</button>
+      <div class="sp"></div>
+      <button class="btn ghost" onclick="$('ft-prev').innerHTML=''">Cancelar</button>
+    </div>`;
+}
+async function confirmarFinTXT(){
+  const ps=window._finTxtPend||[];if(!ps.length)return;
+  const n=ps.length;
+  for(const p of ps){const id=uid();DB.fin[id]={id,...p};}
+  window._finTxtPend=null;$('ft-txt').value='';
+   await save();render();$('ft-prev').innerHTML='';
+  toast(`${n} lançamento(s) salvo(s)!`);
+}
+/* ── Classificação e mensagem (existente) ───────────── */
 function processarMsg(){
   const txt=$('msgtxt').value.trim(),def=$('mtp').value,data=$('mdt').value||today();
   if(!txt){toast('Digite ao menos um débito','err');return;}
@@ -2049,201 +2156,6 @@ async function addEco(id){
 }
 async function delEquip(id){if(!confirm('Remover?'))return;delete DB.equip[id];await save();render();toast('Equipamento removido');}
 async function saveMedia(){DB.meta.mediaShow=+$('eqmed').value||0;await save();}
-
-/* ═══════ VOZ ═══════════════════════════════════ */
-/* ─── VOZ — funciona em Android e iPhone ─────────────
-   Estratégia:
-   1. Grava áudio via MediaRecorder (suportado em todos)
-   2. Envia base64 para Claude via API Anthropic
-   3. Claude transcreve e extrai os dados do show
-   4. Exibe preview para confirmação
-──────────────────────────────────────────────────── */
-
-async function iniciarGravacao(){
-  const btn=$('micbtn');
-  // Se já gravando, parar
-  if(mediaRec && mediaRec.state==='recording'){
-    pararGravacao();
-    return;
-  }
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-    audioChunks = [];
-    mediaRec = new MediaRecorder(stream, {mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'});
-    mediaRec.ondataavailable = e => { if(e.data.size>0) audioChunks.push(e.data); };
-    mediaRec.onstop = async () => {
-      stream.getTracks().forEach(t=>t.stop());
-      await processarAudio();
-    };
-    mediaRec.start(100);
-    // UI gravando
-    btn.classList.add('on');
-    $('micst').textContent='Gravando… toque para parar';
-    $('rec-bar').style.display='block';
-    $('voz-txt').style.display='none';
-    $('voz-prev').style.display='none';
-    $('voz-ok').style.display='none';
-    $('voz-refazer').style.display='none';
-    recSecs=0;
-    recTimer = setInterval(()=>{
-      recSecs++;
-      $('rec-timer').textContent=recSecs+'s';
-      $('rec-prog').style.width=Math.min(recSecs/30*100,100)+'%';
-      if(recSecs>=30) pararGravacao(); // máx 30s
-    },1000);
-  }catch(err){
-    toast('Permissão de microfone negada. Ative nas configurações do celular.','err');
-  }
-}
-
-function pararGravacao(){
-  if(mediaRec && mediaRec.state==='recording') mediaRec.stop();
-  clearInterval(recTimer);
-  $('micbtn').classList.remove('on');
-  $('micst').textContent='Processando…';
-  $('rec-bar').style.display='none';
-}
-
-async function processarAudio(){
-  $('voz-loading').style.display='block';
-  $('micst').textContent='Identificando dados do show…';
-  try{
-    const blob = new Blob(audioChunks, {type: mediaRec.mimeType||'audio/webm'});
-    const base64 = await blobToBase64(blob);
-    const mediaType = (mediaRec.mimeType||'audio/webm').split(';')[0];
-
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:300,
-        messages:[{
-          role:'user',
-          content:[
-            {type:'text',text:`Você é um assistente do app Luah Produção (gestão de shows musicais no Brasil).
-Transcreva este áudio e extraia os dados do show em JSON com os campos:
-- nome: nome ou local do show (string, obrigatório)
-- data: data no formato YYYY-MM-DD (use o ano ${new Date().getFullYear()} se não mencionado)
-- hora: horário no formato HH:MM (padrão "20:00" se não mencionado)
-- valor: valor bruto em número (0 se não mencionado)
-- prazo: prazo de pagamento em dias (padrão 30)
-- tipo: tipo do show (Casamento, Corporativo, Festa particular, Show público, Formatura, Outro)
-- obs: observações extras (string vazia se nada)
-
-Meses em português: janeiro=01, fevereiro=02, março=03, abril=04, maio=05, junho=06, julho=07, agosto=08, setembro=09, outubro=10, novembro=11, dezembro=12.
-
-Responda SOMENTE com o JSON, sem mais nada.`},
-            {type:'document',source:{type:'base64',media_type:mediaType,data:base64}}
-          ]
-        }]
-      })
-    });
-
-    const data = await resp.json();
-    const txt = data.content?.[0]?.text||'';
-    const clean = txt.replace(/```json|```/g,'').trim();
-    const show = JSON.parse(clean);
-    $('voz-loading').style.display='none';
-    $('voz-txt').style.display='block';
-    $('voz-txt').textContent=' Áudio processado com sucesso';
-    montarPreviewVoz(show);
-  }catch(err){
-    $('voz-loading').style.display='none';
-    $('micst').textContent='Não consegui processar. Tente novamente ou use o texto abaixo.';
-    toast('Erro ao processar áudio — use a caixa de texto','err');
-    $('voz-refazer').style.display='block';
-  }
-}
-
-function blobToBase64(blob){
-  return new Promise((res,rej)=>{
-    const r=new FileReader();
-    r.onload=()=>res(r.result.split(',')[1]);
-    r.onerror=rej;
-    r.readAsDataURL(blob);
-  });
-}
-
-function processarTextoVoz(){
-  const txt=$('voz-texto').value.trim();
-  if(!txt){toast('Digite a descrição do show','err');return;}
-  parseVoz(txt);
-}
-
-function refazerVoz(){
-  $('voz-prev').style.display='none';
-  $('voz-ok').style.display='none';
-  $('voz-refazer').style.display='none';
-  $('voz-txt').style.display='none';
-  $('micst').textContent='Toque para gravar';
-  vozData=null;
-}
-
-function montarPreviewVoz(show){
-  const data=show.data||today();
-  const valor=show.valor||0;
-  const prazo=show.prazo||30;
-  const nF=show.nome||'Show sem nome';
-  const falta=[];
-  if(!show.nome)falta.push('nome');
-  if(!valor)falta.push('valor');
-  vozData={id:uid(),nome:nF,data,hora:show.hora||'20:00',valor,
-    liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),
-    prazo,tipo:show.tipo||'Outro',obs:show.obs||'',
-    status:'agendado',recData:addDays(data,prazo),serie:false,falta};
-  const c=falta.length?'var(--amber)':'var(--teal)';
-  $('voz-prev').style.display='block';
-  $('voz-prev').innerHTML=`<div class="card" style="margin-top:11px;border-color:${c}33;text-align:left">
-    <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:${c}">${falta.length?'️ ':'Show identificado'}</div>
-    <div style="font-size:13px;color:var(--t2);line-height:2.1">
-      <b style="color:var(--tx)">Nome:</b> ${nF}<br>
-      <b style="color:var(--tx)">Data:</b> ${fmtD(data)} às ${show.hora||'20:00'}<br>
-      <b style="color:var(--tx)">Tipo:</b> ${show.tipo||'Outro'}<br>
-      <b style="color:var(--tx)">Valor bruto:</b> ${valor?fmt(valor):'<span style="color:var(--amber)">não informado</span>'}<br>
-      ${valor?`<b style="color:var(--tx)">Líquido (após 6%):</b> <span style="color:var(--teal)">${fmt(vozData.liq)}</span><br>`:''}
-      <b style="color:var(--tx)">Recebimento previsto:</b> ${fmtD(vozData.recData)}
-    </div>
-    ${falta.length?`<div class="notice warn" style="margin-top:8px">Faltando: ${falta.join(', ')} — complete depois na aba Shows</div>`:''}
-  </div>`;
-  $('voz-ok').style.display='block';
-  $('voz-refazer').style.display='block';
-  $('micst').textContent='Confirme ou grave novamente';
-}
-function parseVoz(txt){
-  const t=txt.toLowerCase();
-  const MN=['janeiro','fevereiro','março','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  const MV={janeiro:1,fevereiro:2,'março':3,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
-  let nome='',dia='',mes=0,valor=0,prazo=30,hora='20:00';
-  const nm=t.match(/(?:show|adicionar|novo)\s+(.+?)(?:\s+dia|\s+no dia|\s+valor|\s*$)/i);
-  if(nm)nome=nm[1].trim();
-  const dm=t.match(/dia\s+(\d{1,2})/i);if(dm)dia=dm[1];
-  MN.forEach(m=>{if(t.includes(m))mes=MV[m]||0;});
-  const vm=t.match(/valor\s+(\d[\d\.,]*)|(\d[\d\.,]*)\s+reais/i);
-  if(vm)valor=parseFloat((vm[1]||vm[2]||'').replace(/\./g,'').replace(',','.'))||0;
-  const pm=t.match(/(\d+)\s+dias/i);if(pm)prazo=+pm[1];
-  const hm=t.match(/(\d{1,2})(?::(\d{2}))?\s*(?:h|horas?)/i);
-  if(hm)hora=`${hm[1].padStart(2,'0')}:${hm[2]||'00'}`;
-  const ano=new Date().getFullYear(),mF=mes||new Date().getMonth()+1,dF=dia||new Date().getDate();
-  const data=`${ano}-${String(mF).padStart(2,'0')}-${String(dF).padStart(2,'0')}`;
-  const nF=nome||'Show sem nome';
-  const falta=[];if(!nome)falta.push('nome');if(!valor)falta.push('valor');
-  vozData={id:uid(),nome:nF,data,hora,valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:'Outro',obs:'',status:'agendado',recData:addDays(data,prazo),serie:false,falta};
-  const c=falta.length?'var(--amber)':'var(--teal)';
-  $('voz-prev').style.display='block';
-  $('voz-prev').innerHTML=`<div class="card" style="margin-top:11px;border-color:${c}33">
-    <div style="font-size:13px;font-weight:700;margin-bottom:7px;color:${c}">${falta.length?'Show captado (incompleto)':'Show identificado'}</div>
-    <div style="font-size:13px;color:var(--t2);line-height:2"><b style="color:var(--tx)">Nome:</b> ${nF}<br><b style="color:var(--tx)">Data:</b> ${fmtD(data)}<br><b style="color:var(--tx)">Valor:</b> ${valor?fmt(valor):'<span style="color:var(--amber)">não informado</span>'}<br>${valor?`<b style="color:var(--tx)">Líquido:</b> <span style="color:var(--teal)">${fmt(vozData.liq)}</span><br>`:''}<b style="color:var(--tx)">Recebimento:</b> ${fmtD(vozData.recData)}</div>
-    ${falta.length?`<div class="notice warn" style="margin-top:8px">Faltando: ${falta.join(', ')} — complete depois na aba Shows</div>`:''}
-  </div>`;
-  $('voz-ok').style.display='block';
-}
-async function salvarVoz(){
-  if(!vozData)return;
-   DB.shows[vozData.id]=vozData; await save();render();
-  $('voz-txt').style.display='none';$('voz-prev').style.display='none';$('voz-ok').style.display='none';
-  vozData=null;toast('Show salvo!');
-}
 
 /* ═══════ RELATÓRIO ═════════════════════════════ */
 function getPeriodo(){
@@ -2974,6 +2886,7 @@ async function abrirNfShow(serieId, mesRef, showId){
           </div>`:`<div style="font-size:11px;color:var(--t3);margin-top:6px">Nenhum pagamento registrado.</div>`}
         </div>
         <div style="display:flex;gap:6px;align-items:flex-start">
+          <button class="btn sm edit" style="text-decoration:none" onclick="editarMembro('${m.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
           ${m.wa?`<a href="https://wa.me/55${m.wa.replace(/\D/g,'')}?text=Olá+${encodeURIComponent(m.nome)}!" class="btn wa" style="text-decoration:none" target="_blank"></a>`:''}
           <button class="btn sm del" onclick="delMembro('${m.id}')">×</button>
         </div>
