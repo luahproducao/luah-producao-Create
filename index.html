@@ -511,6 +511,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <div style="font-size:13px;color:var(--t2);margin-bottom:24px;text-align:center;line-height:1.6;max-width:340px">Use o <b style="color:var(--tx)">JSONBin</b> — gratuito, sem autenticação de dois fatores, pronto em 2 minutos.</div>
 
     <div style="width:100%;max-width:360px">
+      <div id="setup-form-blocos">
       <div style="background:var(--s2);border:1px solid rgba(200,180,120,.3);border-radius:var(--r);padding:18px;margin-bottom:16px">
         <div style="font-size:12px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Passo a passo (2 minutos)</div>
         <div style="font-size:13px;color:var(--t2);line-height:2.2">
@@ -535,6 +536,14 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <div class="fg"><label>ID do banco (bin)</label>
         <input id="jb-bin-input" type="text" placeholder="Cole o ID do banco (aparelho com os dados)" autocomplete="off" style="font-size:13px;letter-spacing:.5px">
       </div>
+      <div id="setup-conexao-detetada" style="display:none;background:rgba(200,180,120,.08);border:1px solid rgba(200,180,120,.35);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;text-align:center">
+        <div style="font-size:12px;font-weight:700;color:var(--gold2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Conexão detetada neste aparelho</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.7">Bin: <b style="color:var(--tx);font-family:'IBM Plex Mono',monospace;font-size:11px" id="setup-bin-mostrado"></b></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn pri" style="flex:1;font-size:13px;padding:11px" onclick="entrarComConexaoExistente()">Entrar e sincronizar</button>
+          <button class="btn" style="flex:1;font-size:13px;padding:11px;background:rgba(200,180,120,.1);color:var(--gold2);border:1px solid rgba(200,180,120,.3)" onclick="trocarConexao()">Trocar</button>
+        </div>
+      </div>
       <div id="jb-err" style="display:none;font-size:12px;color:var(--rose);margin-bottom:10px;text-align:center"></div>
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <button type="button" id="btn-setup-criar" class="btn pri" style="flex:1;font-size:13px;padding:12px" onclick="modoSetup('criar')">Criar banco novo</button>
@@ -546,6 +555,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <button class="btn ghost" onclick="pularFbSetup()" style="font-size:13px">Usar sem sincronização por agora</button>
       <div style="margin-top:14px;font-size:11px;color:var(--t3);text-align:center;line-height:1.7">
         Para conectar outro aparelho: abra este link, entre com a senha, cole a <b>mesma API Key</b> e também o <b>ID do banco</b> (mostrado ao conectar no 1º aparelho, ou em jsonbin.io → Bins).<br>Os dois veem os mesmos dados em tempo real.
+      </div>
       </div>
     </div>
   </div>
@@ -1256,6 +1266,7 @@ function entrarNoApp(){
   if(!jbKey()||!jbBin()){
     // Primeira vez — pedir API Key JSONBin
     $('fb-setup-view').style.display='block';
+    mostrarConexaoDetetada();
     return;
   }
   localStorage.setItem('luah_logado','1');
@@ -1450,6 +1461,7 @@ async function conectarJSONBin(){
         btn.textContent='Conectar e salvar dados'; btn.disabled=false;
         return;
       }
+      localStorage.setItem('luah_jb_bin', binId);
     }else{
       // Criar um bin novo com os dados atuais
       const r = await fetch(`${JB_BASE}/b`,{
@@ -1470,15 +1482,18 @@ async function conectarJSONBin(){
       newBin = true;
     }
     localStorage.setItem('luah_jb_key', key);
+    if(!newBin){ loadLocal(); } // garantir que o DB local existe antes de decidir
     $('fb-setup-view').style.display='none';
     localStorage.setItem('luah_logado','1');
     LU.cloudVer = 0; // forçar leitura da nuvem para garantir os dados mais recentes
     persistLU();
-    // Enviar os dados locais para a nuvem com retry automático
-    await save();
+    // Enviar os dados locais para a nuvem APENAS se houver dados locais (nunca sobrescrever dados de outro aparelho com DB vazio)
+    const temLocal = Object.keys(DB.shows||{}).length>0 || Object.keys(DB.fin||{}).length>0 || Object.keys(DB.equipe||{}).length>0;
+    if(newBin || temLocal){ await save(); }
     syncUI(true,'conectado');
     const binMostrado = jbBin().slice(0,6)+'…'+jbBin().slice(-4);
     toast((newBin ? 'Banco criado e conectado!' : 'Conectado ao banco existente!')+' Bin: '+binMostrado);
+    await carregarJB(); // puxar os dados da nuvem (dos outros aparelhos)
     render();
     // Polling automático
     clearInterval(_syncTimer);
@@ -1520,6 +1535,20 @@ function pularFbSetup(){
   syncUI(false,'modo local');
   loadLocal(); render();
 }
+
+// Conexão já gravada neste aparelho: entrar direto e sincronizar
+function entrarComConexaoExistente(){
+  $('fb-setup-view').style.display='none';
+  localStorage.setItem('luah_logado','1');
+  LU.cloudVer = 0;
+  persistLU();
+  carregarJB();
+}
+// Ocultar a detetada e voltar ao formulário para trocar a conexão
+function trocarConexao(){
+  $('setup-conexao-detetada').style.display='none';
+  $('setup-form-blocos').style.display='block';
+}
 function modoSetup(modo){
   const aviso=$('setup-aviso-usar');
   if(modo==='usar'){
@@ -1533,6 +1562,22 @@ function modoSetup(modo){
 }
 function salvarFbUrl(){ conectarJSONBin(); }
 function initFB(){ carregarJB(); }
+
+// Mostrar conexão existente no setup (resolve "aparece de novo ao recarregar")
+function mostrarConexaoDetetada(){
+  const bin=jbBin(), key=jbKey();
+  if(!bin||!key) return;
+  const el=$('setup-conexao-detetada');
+  if(el){
+    const m=$('setup-bin-mostrado'); if(m) m.textContent=bin.slice(0,6)+'…'+bin.slice(-4)+' · chave '+key.slice(0,8)+'…';
+    el.style.display='block';
+    const fb=$('setup-form-blocos'); if(fb) fb.style.display='none';
+  }
+}
+function esconderConexaoDetetada(){
+  const el=$('setup-conexao-detetada'); if(el) el.style.display='none';
+  const fb=$('setup-form-blocos'); if(fb) fb.style.display='block';
+}
 function iniciarSync(){ carregarJB(); }
 
 /* ═══════ INIT ══════════════════════════════════ */
@@ -1557,9 +1602,19 @@ window.addEventListener('load',()=>{
     if(jbKey()&&jbBin()){carregarJB();}
     else{syncUI(false,'local');loadLocal();render();}
   } else {
-    // Tem senha mas não está logado — pedir login
-    $('login-view').style.display='block';
-    $('v-dash').classList.remove('on');
+    // Tem senha mas não está logado
+    if(jbKey()&&jbBin()){
+      // Conexão gravada: entrar direto e sincronizar (sem pedir senha de novo)
+      localStorage.setItem('luah_logado','1');
+      LU.cloudVer = 0;
+      persistLU();
+      carregarJB();
+    } else {
+      $('login-view').style.display='block';
+      $('v-dash').classList.remove('on');
+      // Mostrar form JSONBin com aviso se houver conexão parcial
+      mostrarConexaoDetetada();
+    }
   }
   toggleFC();
   ['sd','fdt','mdt','pdt'].forEach(id=>{const e=$(id);if(e)e.value=today();});
