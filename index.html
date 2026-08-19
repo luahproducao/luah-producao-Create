@@ -798,6 +798,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <button class="itab"    onclick="sub('fcar',this)">Cartões</button>
     <button class="itab"    onclick="sub('fd',this)">Dívidas</button>
     <button class="itab"    onclick="sub('fs',this)"> Saúde</button>
+    <button class="itab"    onclick="sub('fx',this)">Impostos</button></button>
   </div>
   <div id="fm">
 
@@ -886,6 +887,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <div class="sl">Casa / pessoal</div><div id="ldiv-cas"></div>
   </div>
   <div id="fs" style="display:none"><div id="saude"></div></div>
+  <div id="fx" style="display:none"><div id="impostos"></div></div>
 </div>
 
 <!-- EQUIPAMENTOS -->
@@ -1138,7 +1140,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 <script>
 'use strict';
 /* ═══════ CONSTANTES ═══════════════════════════════ */
-const TAX=0.06;
+function ImpostoConfig(){DB.imposto=DB.imposto||{taxa:0.06};if(!DB.imposto.taxa)DB.imposto.taxa=0.06;return DB.imposto.taxa;}
 const STORAGE_KEY='luah-producao-dados';
 const SENHA_KEY='luah-producao-senha';
 const M=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -1587,6 +1589,8 @@ function go(id,btn){
   render();
 }
 function sub(id,btn){
+if(id==='fx')renderImpostos();
+if(id==='fx')renderImpostos();
   btn.closest('.itabs').querySelectorAll('.itab').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
   SUBS.forEach(s=>{const e=$(s);if(e)e.style.display='none';});
@@ -1647,7 +1651,7 @@ function renderEscala(prefix){
   const eq=arr(DB.equipe);
   const container=$('escala-'+prefix);if(!container)return;
   const valor=+($(prefix==='s'?'sv':prefix==='es'?'es-valor':'rv').value)||0;
-  const liq=+(valor*(1-TAX)).toFixed(2);
+  const liq=+(valor*(1-ImpostoConfig())).toFixed(2);
 
   if(!eq.length){
     container.innerHTML=`<div style="font-size:12px;color:var(--t3);padding:8px 0">Nenhum membro cadastrado ainda. Use "+ Novo membro" acima.</div>`;
@@ -1679,7 +1683,7 @@ function toggleMembro(prefix,mbId){
 
 function atualizarPreviewEscala(prefix){
   const valor=+($(prefix==='s'?'sv':prefix==='es'?'es-valor':'rv').value)||0;
-  const liq=+(valor*(1-TAX)).toFixed(2);
+  const liq=+(valor*(1-ImpostoConfig())).toFixed(2);
   const selecionados=Object.keys(_escalaTemp[prefix]).filter(id=>DB.equipe[id]);
   const prev=$('escala-'+prefix+'-preview');if(!prev)return;
   if(!selecionados.length||!valor){prev.style.display='none';return;}
@@ -1735,7 +1739,7 @@ async function addShow(){
     return{mbId:id,nome:m.nome,fn:m.fn,val:vShow};
   });
   const id=uid();
-  DB.shows[id]={id,nome,data,hora:$('sh').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('stp').value,obs:$('sobs').value.trim(),local:$('sl').value.trim(),status:'agendado',recData:addDays(data,prazo),serie:false,falta:!valor?['valor']:[],escalacao};
+  DB.shows[id]={id,nome,data,hora:$('sh').value||'20:00',valor,liq:+(valor*(1-ImpostoConfig())).toFixed(2),imp:+(valor*ImpostoConfig()).toFixed(2),prazo,tipo:$('stp').value,obs:$('sobs').value.trim(),local:$('sl').value.trim(),status:'agendado',recData:addDays(data,prazo),serie:false,falta:!valor?['valor']:[],escalacao};
    await save();
   $('sn').value='';$('sl').value='';$('sv').value='';$('sobs').value='';
   _escalaTemp['s']={};renderEscala('s');
@@ -1752,7 +1756,7 @@ async function addSerie(){
     return{mbId:id,nome:m.nome,fn:m.fn,val:vShow};
   });
   const id=uid();
-  DB.series[id]={id,nome,dia:+$('rd').value,hora:$('rh').value||'21:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo:+($('rp')?.value||30),inicio,fim:$('rf').value||'',tipo:$('rtp').value,ferias,cancelados:[],escalacao,local:$('rl').value.trim()};
+  DB.series[id]={id,nome,dia:+$('rd').value,hora:$('rh').value||'21:00',valor,liq:+(valor*(1-ImpostoConfig())).toFixed(2),imp:+(valor*ImpostoConfig()).toFixed(2),prazo:+($('rp')?.value||30),inicio,fim:$('rf').value||'',tipo:$('rtp').value,ferias,cancelados:[],escalacao,local:$('rl').value.trim()};
    gerarSerie(id); await save();
   $('rn').value='';$('rl').value='';$('rv').value='';$('ri').value='';$('rf').value='';
   document.querySelectorAll('#mferias input').forEach(c=>c.checked=false);
@@ -1838,7 +1842,7 @@ async function salvarSerie(){
     return{mbId:mid,nome:m.nome,fn:m.fn,val:vShow};
   });
   r.nome=nome;r.local=$('rl').value.trim();r.dia=+$('rd').value;r.hora=$('rh').value||'21:00';
-  r.valor=valor;r.liq=+(valor*(1-TAX)).toFixed(2);r.imp=+(valor*TAX).toFixed(2);
+  r.valor=valor;r.liq=+(valor*(1-ImpostoConfig())).toFixed(2);r.imp=+(valor*ImpostoConfig()).toFixed(2);
   r.prazo=+$('rp').value||30;r.inicio=inicio;r.fim=$('rf').value||'';
   if($('rtp'))r.tipo=$('rtp').value;r.ferias=ferias;r.escalacao=escalacao;
   gerarSerie(id);
@@ -1940,7 +1944,7 @@ function calcNota(){
   if(!nota){res.innerHTML='';return;}
   const eq=arr(DB.equipe).filter(m=>m.perc>0||m.val>0);
   if(!eq.length){res.innerHTML='<p style="font-size:13px;color:var(--t3);text-align:center;padding:12px">Nenhum membro com valor cadastrado.</p>';return;}
-  const liq=+(nota*(1-TAX)).toFixed(2);
+  const liq=+(nota*(1-ImpostoConfig())).toFixed(2);
   let totalEq=0;
   const linhas=eq.map(m=>{
     const v=m.perc>0?+(nota*(m.perc/100)).toFixed(2):m.val;
@@ -1955,7 +1959,7 @@ function calcNota(){
     <div style="background:var(--s3);border:1px solid var(--line);border-radius:var(--rs);padding:12px;margin-top:12px">
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t3);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--line)">
         <span>Bruto: <b style="color:var(--tx)">${fmt(nota)}</b></span>
-        <span>Imposto 6%: <b style="color:var(--rose)">-${fmt(+(nota*TAX).toFixed(2))}</b></span>
+        <span>Imposto 6%: <b style="color:var(--rose)">-${fmt(+(nota*ImpostoConfig()).toFixed(2))}</b></span>
         <span>Líquido: <b style="color:var(--teal)">${fmt(liq)}</b></span>
       </div>
       ${linhas}
@@ -2200,25 +2204,86 @@ async function confirmarFinTXT(){
 }
 /* ── Classificação e mensagem (existente) ───────────── */
 /* ═══════ RELATÓRIO MENSAL DE CARTÕES (v10) ══════════ */
+function cartaoConfig(f){
+  const fc=DB.faturas||{};
+  if(f.cartao&&fc[f.cartao])return fc[f.cartao];
+  if(f.banco&&fc[f.banco])return fc[f.banco];
+  return null;
+}
 function mesFatura(f){
   // retorna {ano,mes,vence,noProxima} da fatura em que o lançamento é cobrado
   const d=new Date((f.data||'').replace(/-/g,'/'));if(!d) return {ano:null,mes:null,vence:null,noProxima:false};
-  const dd=d.getDate();const ftc=DB.faturas&&DB.faturas[f.banco];
+  const dd=d.getDate();const ftc=cartaoConfig(f);
   if(!ftc||!ftc.fecha){const mm=d.getMonth(),yy=d.getFullYear();return {ano:yy,mes:mm,vence:ftc&&ftc.vence||dd,noProxima:false};}
   let mm=d.getMonth(),yy=d.getFullYear();if(dd>ftc.fecha){mm++;if(mm>11){mm=0;yy++;}}
   return {ano:yy,mes:mm,vence:ftc.vence||10,noProxima:true};
 }
 function toggleFaturas(){
+  function listaCartoesHtml(){
+    const fc=DB.faturas||{};
+    const grupos={};
+    Object.entries(fc).forEach(([nome,ft])=>{const b=ft.banco||nome;grupos[b]=grupos[b]||[];grupos[b].push({nome,fecha:ft.fecha,vence:ft.vence});});
+    FINTX_BANCOS.forEach(b=>{if(!grupos[b.nome])grupos[b.nome]=[{nome:b.nome,fecha:5,vence:10}];});
+    return Object.entries(grupos).map(([b,carts])=>`<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:7px"><div style="font-size:11px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${b}</div>${carts.map(c=>`<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;font-size:12px"><input type="text" value="${c.nome}" data-cartao="${c.nome}" class="cart-nome" style="flex:1;min-width:0;font-size:12px" placeholder="Nome do cartão"></div>`).join('')}${carts.map(c=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px"><span style="flex:1;font-weight:700">${c.nome}</span><label style="color:var(--t3)">Fecha dia <input type="number" min="1" max="31" value="${c.fecha}" id="ft-fecha-${c.nome}" data-cartao="${c.nome}" style="width:44px"></label><label style="color:var(--t3)">Vence dia <input type="number" min="1" max="31" value="${c.vence}" id="ft-vence-${c.nome}" data-cartao="${c.nome}" style="width:44px"></label><button class="btn ghost" style="font-size:10px;padding:3px 8px" onclick="removerCartao('${c.nome}')">Remover</button></div>`).join('')}<div style="margin-top:5px"><button class="btn ghost" style="font-size:11px;padding:4px 9px" onclick="adicionarCartao('${b}')">+ Novo cartão</button></div></div>`).join('');
+  }
   const p=$('pnl-faturas');if(!p)return;
   if(p.style.display==='block'){p.style.display='none';return;}
   const bancos=FINTX_BANCOS.map(b=>b.nome);
-  p.innerHTML=`<div class="card" style="margin-top:10px;border-color:rgba(200,180,120,.3)"><div style="font-size:12px;font-weight:700;margin-bottom:8px">Fatura de cada banco</div>${bancos.map(b=>{const ft=(DB.faturas||{})[b]||{fecha:5,vence:10};return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px"><span style="flex:1;font-weight:700">${b}</span><label style="color:var(--t3)">Fecha dia <input type="number" min="1" max="31" value="${ft.fecha}" id="ft-fecha-${b}" style="width:44px"></label><label style="color:var(--t3)">Vence dia <input type="number" min="1" max="31" value="${ft.vence}" id="ft-vence-${b}" style="width:44px"></label></div>`;}).join('')}<div style="display:flex;gap:7px;margin-top:8px"><button class="btn pri" style="flex:1;font-size:12px" onclick="salvarFaturas()">Salvar</button><button class="btn ghost" style="font-size:12px" onclick="toggleFaturas()">Fechar</button></div></div>`;
+  p.innerHTML=`<div class="card" style="margin-top:10px;border-color:rgba(200,180,120,.3)"><div style="font-size:12px;font-weight:700;margin-bottom:8px">Faturas por cartão</div>${listaCartoesHtml()}<div style="display:flex;gap:7px;margin-top:8px"><button class="btn pri" style="flex:1;font-size:12px" onclick="salvarFaturas()">Salvar</button><button class="btn ghost" style="font-size:12px" onclick="toggleFaturas()">Fechar</button></div></div>`;
   p.style.display='block';
 }
 async function salvarFaturas(){
   DB.faturas=DB.faturas||{};
-  FINTX_BANCOS.forEach(b=>{const fe=$('ft-fecha-'+b.nome),ve=$('ft-vence-'+b.nome);if(fe&&ve){const f=+fe.value||5,v=+ve.value||10;DB.faturas[b.nome]={fecha:Math.min(31,Math.max(1,f)),vence:Math.min(31,Math.max(1,v))};}});
+  const fc=(DB.faturas=Object.fromEntries(Object.entries(DB.faturas||{}).filter(([n,f])=>f&&typeof f==='object')));
+  document.querySelectorAll('#pnl-faturas [data-cartao]').forEach(el=>{
+    const nome=el.getAttribute('data-cartao');const novo=(el.className.includes('cart-nome')&&el.value.trim()!==nome)?el.value.trim():nome;
+    if(el.className.includes('cart-nome')){if(novo&&novo!==nome&&fc[nome]){fc[novo]=fc[nome];delete fc[nome];}} else if(el.id&&el.id.startsWith('ft-fecha-')&&fc[nome]){fc[nome].fecha=Math.min(31,Math.max(1,+el.value||5));} else if(el.id&&el.id.startsWith('ft-vence-')&&fc[nome]){fc[nome].vence=Math.min(31,Math.max(1,+el.value||10));}
+  });
+  Object.entries(fc).forEach(([n,f])=>{if(!f.fecha)f.fecha=5;if(!f.vence)f.vence=10;if(!f.banco){const b=FINTX_BANCOS.find(x=>x.nome===n);f.banco=b?b.nome:n;}});
   await save();toggleFaturas();render();toast('Faturas atualizadas');
+}
+
+function adicionarCartao(banco){
+  const fc=DB.faturas||{};
+  const idx=Object.keys(fc).filter(n=>(fc[n]||{}).banco===banco||n===banco).length+1;
+  const nome=banco+' '+(idx===1?'2':'+'+idx);
+  fc[nome]={fecha:5,vence:10,banco};
+  DB.faturas=fc;
+  toggleFaturas();toggleFaturas();
+  toast('Novo cartão adicionado — defina o nome, feche e salve','ok');
+}
+function removerCartao(nome){
+  const fc=DB.faturas||{};const f=fc[nome];if(!f){toast('Cartão não encontrado','err');return;}
+  if(Object.keys(fc).length<=1){toast('Mantenha ao menos um cartão','err');return;}
+  const alt=Object.keys(fc).find(n=>n!==nome&&((fc[n]||{}).banco||n)===(f.banco||nome));
+  if(alt){Object.values(DB.fin).forEach(x=>{if((x.cartao||x.banco||'')===nome)x.cartao=alt;});}
+  else{Object.values(DB.fin).forEach(x=>{if((x.cartao||x.banco||'')===nome){delete x.cartao;}});}
+  delete fc[nome];DB.faturas=fc;
+  toggleFaturas();toggleFaturas();render();save();
+  toast('Cartão removido','ok');
+}
+function renderImpostos(){
+  const e=$('impostos');if(!e)return;
+  const cfg=ImpostoConfig();
+  e.innerHTML=`<div class="card" style="border-color:rgba(200,180,120,.3)">
+    <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gold);margin-bottom:10px">Impostos e contabilidade</div>
+    <div style="font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:12px">Configure as regras de cálculo dos valores líquidos dos shows. As alterações são aplicadas automaticamente a todos os shows existentes ao recalcular.</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <label style="flex:1;font-size:12px;font-weight:700">Alíquota de imposto sobre shows (Simples Nacional)</label>
+      <div style="display:flex;align-items:center;gap:5px"><input type="number" min="0" max="50" step="0.1" value="${(cfg*100).toFixed(1)}" id="imp-taxa" style="width:64px"><span style="font-size:12px">%</span></div>
+    </div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:12px">Ex.: 6,0% — um show de R$ 1.000 gera R$ 60,00 de imposto e R$ 940,00 líquidos.</div>
+    <button class="btn pri" style="width:100%;font-size:12px" onclick="salvarImpostos()">Salvar e recalcular shows</button>
+  </div>`;
+}
+function salvarImpostos(){
+  const t=+($('imp-taxa')?.value||'6').replace(',','.');
+  if(isNaN(t)||t<0||t>50){toast('Informe uma alíquota entre 0 e 50%','err');return;}
+  DB.imposto=DB.imposto||{};DB.imposto.taxa=t/100;
+  // recalcular shows existentes com a nova alíquota
+  let n=0;Object.values(DB.shows).forEach(sh=>{const v=+sh.valor||0;sh.liq=+(v*(1-t/100)).toFixed(2);sh.imp=+(v*t/100).toFixed(2);n++;});
+  save();render();renderImpostos();
+  toast(`Alíquota ${t.toFixed(1)}% aplicada a ${n} show(s)!`,'ok');
 }
 function renderCartoes(){
   const e=$('cartoes');if(!e)return;
@@ -2240,7 +2305,7 @@ function renderCartoes(){
   if(!ks.length){e.innerHTML=`<div class="empty" style="padding:26px 10px">Lançamentos de cartão sem data válida.</div>`;return;}
   window._carFiltro=window._carFiltro||'Todos';
   const bancoDetetado=(f)=>detetarBanco(f);
-  const cartFilt=window._carFiltro==='Todos'?cartoes:cartoes.filter(f=>{const d=(f.desc||'').toLowerCase();return window._carFiltro==='Outros'?d==='outros'||!FINTX_BANCOS.some(b=>b.re.test(d)):FINTX_BANCOS.find(b=>b.nome===window._carFiltro)?.re.test(d)||false;});
+  const cartFilt=window._carFiltro==='Todos'?cartoes:cartoes.filter(f=>{const d=(f.desc||'').toLowerCase();if(window._carFiltro==='Outros')return d==='outros'||!FINTX_BANCOS.some(b=>b.re.test(d));const b=FINTX_BANCOS.find(x=>x.nome===window._carFiltro);if(b)return b.re.test(d)||(f.cartao||'')===window._carFiltro;const _cf=window._carFiltro;let ft=(DB.faturas||{})[_cf];let ftNome=_cf;if(!ft)for(const k in DB.faturas){const f=(DB.faturas||{})[k];if(f&&f.banco&&f.banco!==k&&f.banco+' — '+k===_cf){ft=f;ftNome=k;break;}}if(ft&&ft.banco){if(ftNome!==ft.banco){const tk=d.replace(/cartão|credito|crédito/gi,'').replace(/—|-/g,' ').replace(/ +/g,' ').trim();return (f.cartao||'')===ftNome||tk.includes(ftNome.toLowerCase().trim());}return FINTX_BANCOS.find(x=>x.nome===ft.banco)?.re.test(d)||(f.cartao||'')===ft.banco;}return false;});
   // Cards mensais
   const cards=ks.map(k=>{
     const [y,m]=k.split('-').map(Number);
@@ -2257,10 +2322,10 @@ function renderCartoes(){
     // Por banco
     const porBanco={};
     fins.forEach(f=>{const b=bancoDetetado(f)||'Outros';porBanco[b]=(porBanco[b]||0)+f.valor;});
-    const bancoRows=Object.entries(porBanco).sort((a,b)=>b[1]-a[1]).map(([b,v])=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--line)"><span>${b}</span><b style="color:var(--rose)">-${fmt(v)}</b></div>`).join('');
+    const _cfk=window._carFiltro!=='Todos';const bancoRows=Object.entries(porBanco).sort((a,b)=>b[1]-a[1]).map(([b,v])=>{const _it=_cfk?fins.filter(f=>(bancoDetetado(f)||'Outros')===b):[];return`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--line)"><span>${b}${_it.length?' · '+_it.map(x=>x.desc).join(' · '):''}</span><b style="color:var(--rose)">-${fmt(v)}</b></div>`;}).join('');
     return`<div class="card" style="border-color:rgba(200,180,120,.25);margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gold)">${label}</span>${(DB.faturas||{})[window._carFiltro]&&window._carFiltro!=="Todos"?`<span style="font-size:11px;color:var(--t3);font-weight:700;margin-left:7px">Vence dia ${(DB.faturas||{})[window._carFiltro].vence||10}</span>`:""}
+        <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gold)">${label}</span>${(DB.faturas||{})[window._carFiltro]&&window._carFiltro!=="Todos"?`<span style="font-size:11px;color:var(--t3);font-weight:700;margin-left:7px">Fecha dia ${(DB.faturas||{})[window._carFiltro].fecha||5} · Vence dia ${(DB.faturas||{})[window._carFiltro].vence||10}</span>`:""}
         <span style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:700;color:var(--rose)">-${fmt(total)}</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px">
@@ -2268,7 +2333,7 @@ function renderCartoes(){
         <div style="background:var(--s3);border-radius:var(--rs);padding:8px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Parcelado</div><div style="font-size:13px;font-weight:700;color:var(--amber)">${fmt(totalParc)}</div></div>
         <div style="background:var(--s3);border-radius:var(--rs);padding:8px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Em aberto</div><div style="font-size:13px;font-weight:700;color:var(--rose)">${fmt(vAbertas)}</div></div>
       </div>
-      ${fins.filter(f=>f._noProx).length?`<div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:4px">${fins.filter(f=>f._noProx).length} lançamento(s) comprado(s) após o fechamento — na fatura do mês seguinte</div>`:''}${fins.length>1?`<div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Por banco</div>${bancoRows}`:''}
+      ${fins.filter(f=>f._noProx).length?`<div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:4px">${fins.filter(f=>f._noProx).length} lançamento(s) comprado(s) após o fechamento — na fatura do mês seguinte</div>`:''}${(fins.length>1||window._carFiltro!=='Todos')?`<div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Por banco</div>${bancoRows}`:''}
     </div>`;
   }).join('');
   // KPI consolidado
@@ -2279,7 +2344,9 @@ function renderCartoes(){
     <div style="background:rgba(217,192,136,.07);border:1px solid rgba(217,192,136,.22);border-radius:12px;padding:12px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--amber);text-transform:uppercase;margin-bottom:4px">Gasto total em cartões</div><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--amber)">${fmt(totalGeral)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">${cartoes.length} lançamento(s)</div></div>
     <div style="background:rgba(176,98,80,.07);border:1px solid rgba(176,98,80,.22);border-radius:12px;padding:12px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--rose);text-transform:uppercase;margin-bottom:4px">Parcelas por pagar</div><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--rose)">${fmt(vEmAberto)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">${emAberto.length} lançamento(s) a vencer</div></div>
   </div>`;
-  const filtroSel=`<select id="car-filtro" onchange="window._carFiltro=this.value;renderCartoes();" style="font-size:11px;padding:6px 26px 6px 10px;border-radius:var(--r-pill);background:var(--s1);border:1px solid rgba(200,180,120,.3);color:var(--tx);width:auto;font-family:'Inter';cursor:pointer;margin:0 0 12px;max-width:180px">${['Todos'].concat(FINTX_BANCOS.map(b=>b.nome)).filter((v,i,a)=>a.indexOf(v)===i).map(n=>`<option value="${n}" ${n===window._carFiltro?'selected':''}>${n}</option>`).join('')}</select>`;
+  const carOpts=['Todos'].concat(FINTX_BANCOS.map(b=>b.nome)).filter((v,i,a)=>a.indexOf(v)===i);
+  Object.entries(DB.faturas||{}).forEach(([n,f])=>{if(f&&f.banco&&f.banco!==n)carOpts.push(n);});
+  const filtroSel=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px">${carOpts.map(n=>{const f=(DB.faturas||{})[n];const lab=f&&f.banco&&f.banco!==n?(f.banco+' — '+n):n;return `<button class="btn sm ghost" onclick="window._carFiltro='${n}';renderCartoes();" style="font-size:11px;padding:5px 11px;border-radius:var(--r-pill);border-color:${n===window._carFiltro?'var(--gold)':'rgba(200,180,120,.3)'};color:${n===window._carFiltro?'var(--gold)':'var(--t2)'};font-weight:700">${lab}</button>`;}).join('')}</div>`;
   const graficoBtn=`<button class="btn sm edit" onclick="toggleGrafCar()" style="margin-left:auto">${(window._carGrafOk?'Ocultar':'Exibir')+' gráfico'}</button>`;
   const faturasBtn=`<button class="btn sm edit" onclick="toggleFaturas()" style="margin-left:7px">Faturas</button>`;
   e.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px">Gastos com cartões de crédito<span style="flex:1;height:1px;background:var(--line)"></span>${filtroSel}${graficoBtn}${faturasBtn}</div>
@@ -2769,7 +2836,7 @@ async function salvarEditShow(){
     const vShow=m.perc>0&&valor?+(valor*(m.perc/100)).toFixed(2):m.val||0;
     return{mbId:mid,nome:m.nome,fn:m.fn,val:vShow};
   });
-  Object.assign(DB.shows[id],{nome:$('es-nome').value.trim(),local:$('es-local').value.trim(),data,hora:$('es-hora').value||'20:00',valor,liq:+(valor*(1-TAX)).toFixed(2),imp:+(valor*TAX).toFixed(2),prazo,tipo:$('es-tipo').value,status:$('es-status').value,obs:$('es-obs').value.trim(),recData:addDays(data,prazo),falta:!valor?['valor']:[],escalacao});
+  Object.assign(DB.shows[id],{nome:$('es-nome').value.trim(),local:$('es-local').value.trim(),data,hora:$('es-hora').value||'20:00',valor,liq:+(valor*(1-ImpostoConfig())).toFixed(2),imp:+(valor*ImpostoConfig()).toFixed(2),prazo,tipo:$('es-tipo').value,status:$('es-status').value,obs:$('es-obs').value.trim(),recData:addDays(data,prazo),falta:!valor?['valor']:[],escalacao});
   await save();fecharModalShow();
   toast('Show atualizado'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
@@ -3249,6 +3316,13 @@ function rPrevisao(){
     </div>`).join('');
 }
 let _selFin={};
+function modoSelFin(){
+  const todos=arr(DB.fin);
+  const pend=todos.filter(f=>!_selFin[f.id]);
+  if(!pend.length){toggleSelFin(false);renderFinList();return;}
+  pend.slice(0,1).forEach(f=>{_selFin[f.id]=1;});
+  renderFinList();
+}
 function toggleSelFin(on){
   const ks2=Object.keys(arr(DB.fin).reduce((a,f)=>{const k=(f.data||'').slice(0,7);if(k)(a[k]=1);return a;},{})).sort().reverse();
   const s2=arr(DB.fin).sort((a,b)=>b.data.localeCompare(a.data));
@@ -3301,7 +3375,7 @@ function rFin(){
     const pgtoClr=pgto?pgColor[pgto]:'';
     const cor=isRec?'var(--teal)':isFix?'var(--rose)':'var(--amber)';
     const borda=isRec?'var(--teal)':isFix?'var(--rose)':'var(--amber)';
-    return`${_selFin[f.id]?'<span style=\'color:var(--gold);font-size:11px;font-weight:800;margin-right:2px\'>✓ </span>':''}<div style="display:flex;align-items:center;background:var(--s2);border:1px solid var(--line);border-left:3px solid ${borda};border-radius:12px;padding:12px 13px;margin-bottom:7px;gap:10px">
+    return`${_selFin[f.id]?'<span style=\'color:var(--gold);font-size:11px;font-weight:800;margin-right:2px\'>✓ </span>':''}<div style="display:flex;align-items:center;background:var(--s2);border:1px solid ${_selFin[f.id]?'var(--gold)':'var(--line)'};border-left:3px solid ${borda};border-radius:12px;padding:12px 13px;margin-bottom:7px;gap:10px;cursor:pointer" onclick="if(event.target.closest('button,select,input,a'))return;_selFin['${f.id}']?delete _selFin['${f.id}']:_selFin['${f.id}']=1;renderFinList()">
       <!-- Ícone tipo -->
       <div style="width:36px;height:36px;border-radius:10px;background:${cor}14;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;font-weight:800;color:${cor}">${isRec?'↑':(f.tipo==='casa'?'↓':(isFix?'−':'−'))}</div>
       <!-- Info principal -->
@@ -3341,9 +3415,12 @@ function rFin(){
       <span style="font-size:12px;font-weight:700;color:${saldo>=0?'var(--teal)':'var(--rose)'}">saldo ${saldo>=0?'+':''}${fmt(saldo)}</span>
     </div>${lista.slice(0,40).map(row).join('')}`;
   };
+  const nSel=Object.keys(_selFin).length;
   const tools=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-  <label class="btn ghost" style="font-size:11px;padding:5px 10px"><input type="checkbox" onchange="toggleSelFin(this.checked)" style="margin-right:5px">Selecionar tudo</label>
-  <button class="btn ghost" style="font-size:11px;padding:5px 10px" onclick="delSelFin()">Excluir selecionados</button>
+  <button class="btn sm" style="font-size:11px;padding:5px 12px;border-color:${nSel?'var(--gold)':'rgba(200,180,120,.3)'};color:${nSel?'var(--gold)':'var(--tx)'};font-weight:700" onclick="modoSelFin()">${nSel?'Seleção ativa':'Modo seleção'}</button>
+  ${nSel?`<span style="font-size:11px;font-weight:700;color:var(--gold)">${nSel} selecionado(s)</span>`:''}
+  ${nSel?`<button class="btn sm ghost" style="font-size:11px;padding:5px 10px" onclick="delSelFin()">Excluir selecionados</button>`:''}
+  ${nSel?`<button class="btn sm ghost" style="font-size:11px;padding:5px 10px" onclick="toggleSelFin(false);renderFinList()">Cancelar</button>`:''}
 </div>`;
 e.innerHTML=previsao+resumo+tools+ks.map(blocoMes).join('');
 }
@@ -3534,6 +3611,8 @@ go = function(id, btn){
   document.getElementById('qbar').style.display=id==='fin'?'flex':'none';
   render();
 };
+
+function renderFinList(){render();}
 </script>
 </div></body>
 </html>
