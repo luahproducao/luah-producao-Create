@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Luah"><link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 180 180%22><rect width=%22180%22 height=%22180%22 rx=%2240%22 fill=%22%23050507%22/><text x=%2290%22 y=%22130%22 font-size=%22100%22 text-anchor=%22middle%22 fill=%22%23c8b478%22>♪</text></svg>">
 <meta name="theme-color" content="#050507">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
@@ -559,6 +559,8 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   </div>
   <div class="kpi-grid" id="d-kpis"></div>
   <div id="d-resumo"></div>
+  <div class="sl" style="margin-top:14px">Onde vai cada real de <span id="d-p-mes" style="color:var(--vio2);margin:0 4px"></span></div>
+  <div id="d-painel" style="display:grid;gap:10px"></div>
   <div class="sl">Agenda — <span id="d-mes-label" style="color:var(--vio2);margin-left:4px"></span></div>
   <div id="d-agenda"></div>
   <div class="sl">Próximos shows</div>
@@ -576,7 +578,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <button class="itab"    onclick="sub('ss',this)">Séries</button>
     <button class="itab"    onclick="sub('sna',this)">+ Show</button>
     <button class="itab"    onclick="sub('sns',this)">+ Série</button>
-  </div>
+  </div><div id="pan-shows" style="display:none;margin:10px 0"></div>
   <div id="sa"><div id="lista-shows"></div></div>
   <div id="ss" style="display:none"><div id="lista-series"></div></div>
   <div id="sna" style="display:none">
@@ -584,8 +586,8 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <div class="card">
       <div class="r2">
         <div class="fg"><label>Nome</label><input id="sn" placeholder="ex: Casamento Silva"></div>
-        <div class="fg"><label>Local</label><input id="sl" placeholder="ex: Espaço Villa — Salvador/BA"></div>
-        <div class="fg"><label>Data</label><input id="sd" type="date"></div>
+        <div class="fg"><label>Local</label><input id="sl" placeholder="ex: Espaço Villa — Salvador/BA" list="dl-sug-locais-show" autocomplete="off"></div>
+        <div class="fg"><label>Data</label><input id="sd" type="date"> <span id="lbl-dia-sd" style="font-size:11px;color:var(--gold);font-weight:600"></span></div>
       </div>
       <div class="r2">
         <div class="fg"><label>Horário</label><input id="sh" type="time" value="20:00"></div>
@@ -642,7 +644,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <div class="card">
       <div class="r2">
         <div class="fg"><label>Nome</label><input id="rn" placeholder="ex: Noite de Branco"></div>
-        <div class="fg"><label>Local</label><input id="rl" placeholder="ex: IberoStar Hotel"></div>
+        <div class="fg"><label>Local</label><input id="rl" placeholder="ex: IberoStar Hotel" list="dl-sug-locais-serie" autocomplete="off"></div>
         <div class="fg"><label>Dia da semana</label>
           <select id="rd"><option value="0">Domingo</option><option value="1">Segunda</option><option value="2">Terça</option><option value="3">Quarta</option><option value="4">Quinta</option><option value="5">Sexta</option><option value="6" selected>Sábado</option></select>
         </div>
@@ -652,7 +654,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
         <div class="fg"><label>Valor bruto (R$)</label><input id="rv" type="number" placeholder="0,00" inputmode="decimal"></div>
       </div>
       <div class="r2">
-        <div class="fg"><label>Início</label><input id="ri" type="date"></div>
+        <div class="fg"><label>Início</label><input id="ri" type="date"> <span id="lbl-dia-ri" style="font-size:11px;color:var(--gold);font-weight:600"></span></div>
         <div class="fg"><label>Fim (vazio = 6 meses)</label><input id="rf" type="date"></div>
       </div>
       <div class="r2">
@@ -725,7 +727,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <button class="itab"    onclick="sub('ea',this)">+ Membro</button>
     <button class="itab"    onclick="sub('ep',this)"> Pagamentos</button>
     <button class="itab"    onclick="sub('ec',this)"> Calcular</button>
-  </div>
+  </div><div id="pan-eq" style="display:none;margin:10px 0"></div>
   <div id="el">
     <div id="lista-eq"></div>
   </div>
@@ -799,7 +801,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <button class="itab"    onclick="sub('fd',this)">Dívidas</button>
     <button class="itab"    onclick="sub('fs',this)"> Saúde</button>
     <button class="itab"    onclick="sub('fx',this)">Impostos</button></button>
-  </div>
+  </div><div id="pan-fin" style="display:none;margin:10px 0"></div>
   <div id="fm">
 
     <div class="card glass">
@@ -911,6 +913,17 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   <div id="lista-equip"></div>
 </div>
 
+
+<!-- NOTAS FISCAIS -->
+<div id="v-notas" class="view">
+  <div class="itabs">
+    <button class="itab on" onclick="sub('na',this)"> A emitir</button>
+    <button class="itab"    onclick="sub('ne',this)"> Emitidas</button>
+  </div>
+  <div id="na"><div id="lista-notas-pend"></div></div>
+  <div id="ne" style="display:none"><div id="lista-notas-emit"></div></div>
+</div>
+
 <!-- RELATÓRIO -->
 <div id="v-rel" class="view">
   <div class="card">
@@ -990,8 +1003,8 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <input type="hidden" id="edit-show-id">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">
       <div class="fg"><label>Nome</label><input id="es-nome"></div>
-      <div class="fg"><label>Local</label><input id="es-local" placeholder="ex: Espaço Villa — Salvador/BA"></div>
-      <div class="fg"><label>Data</label><input id="es-data" type="date"></div>
+      <div class="fg"><label>Local</label><input id="es-local" placeholder="ex: Espaço Villa — Salvador/BA" list="dl-sug-locais-edit" autocomplete="off"></div>
+      <div class="fg"><label>Data</label><input id="es-data" type="date"> <span id="lbl-dia-eso" style="font-size:11px;color:var(--gold);font-weight:600"></span></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">
       <div class="fg"><label>Horário</label><input id="es-hora" type="time"></div>
@@ -1110,6 +1123,10 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 <div id="more-menu" style="display:none;position:fixed;bottom:60px;left:0;right:0;z-index:110;background:rgba(5,5,7,.97);backdrop-filter:blur(24px);border-top:1px solid var(--line);padding:16px 14px 20px">
   <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Mais opções</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <button onclick="goFromMore('notas')" style="background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
+      <div style="font-size:18px;margin-bottom:6px"></div>
+      <div style="font-size:13px;font-weight:600">Notas Fiscais</div>
+    </button>
     <button onclick="goFromMore('equip')" style="background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;color:var(--tx);cursor:pointer;font-family:Inter">
       <div style="font-size:18px;margin-bottom:6px"></div>
       <div style="font-size:13px;font-weight:600">Equipamentos</div>
@@ -1137,7 +1154,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 </div>
 
 <!-- JSONBin — sem Firebase -->
-<script>
+<datalist id="dl-sug-locais-show"></datalist><datalist id="dl-sug-locais-serie"></datalist><datalist id="dl-sug-locais-edit"></datalist><script>
 'use strict';
 /* ═══════ CONSTANTES ═══════════════════════════════ */
 function ImpostoConfig(){DB.imposto=DB.imposto||{taxa:0.06};if(!DB.imposto.taxa)DB.imposto.taxa=0.06;return DB.imposto.taxa;}
@@ -1320,7 +1337,7 @@ async function pullFromCloud(){
     if(!r.ok){
       // 404 = bin criado mas vazio: aceitar o estado vazio para que o aparelho
       // com dados locais os envie (cenário 2.º aparelho sem dados)
-      if(r.status === 404){ DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...DB}; cleanQueue(); LU.cloudVer = ver; persistLU(); saveLocal(); return 'vazio'; }
+      if(r.status === 404){ DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...DB}; cleanQueue(); LU.cloudVer = ver; persistLU(); garantirArtista(); saveLocal(); return 'vazio'; }
       return false;
     }
     const j = await r.json();
@@ -1331,6 +1348,7 @@ async function pullFromCloud(){
     cleanQueue();
     LU.cloudVer = ver;
     persistLU();
+    garantirArtista();
     saveLocal();
     const m = $('eqmed'); if(m && DB.meta?.mediaShow) m.value = DB.meta.mediaShow;
     render();
@@ -1350,14 +1368,14 @@ async function atualizarApp(){
 
 async function carregarJB(){
   const key = jbKey(), bin = jbBin();
-  if(!key || !bin){ loadLocal(); render(); return; }
+  if(!key || !bin){ loadLocal();garantirArtista(); render(); return; }
   // 0. Garantir dados locais em memória (no reload o DB começa vazio)
   if(!Object.keys(DB.shows||{}).length && !Object.keys(DB.fin||{}).length){ loadLocal(); }
   // 1. Reenviar pendências locais (garante que exclusões recentes vão para a nuvem)
   await drainQueue(key, bin);
   // 2. Trazer da nuvem apenas se não estiver desatualizada
   const pulled = await pullFromCloud();
-  if(!pulled){ loadLocal(); syncUI(false,'offline — dados locais'); render(); return; }
+  if(!pulled){ loadLocal(); garantirArtista(); syncUI(false,'offline — dados locais'); render(); return; }
   // 3. Nuvem vazia (criada mas sem dados) + dados locais existentes: enviar os dados locais
   const temLocal = !!(DB.shows && Object.keys(DB.shows).length) || !!(DB.fin && Object.keys(DB.fin).length);
   const nuvemVazia = (pulled === 'vazio') || (!Object.keys(DB.shows||{}).length && !Object.keys(DB.fin||{}).length && !Object.keys(DB.equipe||{}).length);
@@ -1365,6 +1383,8 @@ async function carregarJB(){
     await save();
     toast('Dados deste aparelho enviados à nuvem');
   }
+  garantirArtista();
+  saveLocal();
   syncUI(true,'online ');
   // 3. Polling a cada 20s
   clearInterval(_syncTimer);
@@ -1549,12 +1569,12 @@ window.addEventListener('load',()=>{
     $('login-view').style.display='none';
     const fbs=$('fb-setup-view');if(fbs)fbs.style.display='none';
     if(jbKey()&&jbBin()){carregarJB();}
-    else{syncUI(false,'offline — sem JSONBin');loadLocal();render();}
+    else{syncUI(false,'offline — sem JSONBin');loadLocal();garantirArtista();render();}
   } else if(logado){
     $('login-view').style.display='none';
     const fbs=$('fb-setup-view');if(fbs)fbs.style.display='none';
     if(jbKey()&&jbBin()){carregarJB();}
-    else{syncUI(false,'local');loadLocal();render();}
+    else{syncUI(false,'local');loadLocal();garantirArtista();render();}
   } else {
     // Tem senha mas não está logado
     if(jbKey()&&jbBin()){
@@ -1573,6 +1593,7 @@ window.addEventListener('load',()=>{
   toggleFC();
   ['sd','fdt','mdt','pdt'].forEach(id=>{const e=$(id);if(e)e.value=today();});
   renderConteudo();
+  setTimeout(initDiasSemana,700);
 });
 
 
@@ -1596,8 +1617,8 @@ if(id==='fx')renderImpostos();
   SUBS.forEach(s=>{const e=$(s);if(e)e.style.display='none';});
   $(id).style.display='block';
   // Inicializar escalação ao abrir formulários de show
-  if(id==='sna')setTimeout(()=>renderEscala('s'),50);
-  if(id==='sns')setTimeout(()=>renderEscala('r'),50);
+  if(id==='sna'){garantirArtista();setTimeout(()=>{autoEscala('s');renderEscala('s');},50);}
+  if(id==='sns'){garantirArtista();setTimeout(()=>{autoEscala('r');renderEscala('r');},50);}
   render();
 }
 
@@ -1647,6 +1668,11 @@ async function qaAdd(){
 // Armazena escalação temporária enquanto preenche o formulário
 let _escalaTemp={s:{},r:{},es:{}};
 
+function autoEscala(prefix){
+  if(!DB.equipe)return;
+  const br=Object.values(DB.equipe).find(m=>m.nome&&m.nome.toLowerCase().includes('bruno luah'));
+  if(br)_escalaTemp[prefix][br.id]=true;
+}
 function renderEscala(prefix){
   const eq=arr(DB.equipe);
   const container=$('escala-'+prefix);if(!container)return;
@@ -1723,10 +1749,66 @@ async function salvarNovoMembroEscala(prefix){
 }
 
 // Inicializar escalação quando abre a aba
-function initEscala(prefix){
+function initEscala(prefix){garantirArtista();autoEscala(prefix);
   _escalaTemp[prefix]={};renderEscala(prefix);
 }
 
+/* ─── DIA DA SEMANA AUTOMÁTICO (v16c) ─── */
+function diaSemanaISO(ds){
+  const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const d=new Date(ds+'T12:00');return isNaN(d.getTime())?'':dias[d.getDay()];
+}
+function autoDiaSemana(inpId,labelId){
+  const inp=document.getElementById(inpId);if(!inp)return;
+  const lab=document.getElementById(labelId);
+  const upd=()=>{if(lab){const ds=diaSemanaISO(inp.value);lab.textContent=ds?(' · '+ds):'';};};
+  inp.addEventListener('input',upd);
+  inp.addEventListener('change',upd);
+}
+function initDiasSemana(){
+  autoDiaSemana('sd','lbl-dia-sd');
+  autoDiaSemana('es-data','lbl-dia-eso');
+  autoDiaSemana('ri','lbl-dia-ri');
+  autoDiaSerie();
+}/* ─── SÉRIE: data → dia da semana no select ─── */
+function autoDiaSerie(){
+  const ri=document.getElementById('ri');const rd=document.getElementById('rd');
+  if(!ri||!rd)return;
+  const upd=()=>{if(ri.value){const d=new Date(ri.value+'T12:00');if(!isNaN(d.getTime()))rd.value=String(d.getDay());}};
+  ri.addEventListener('input',upd);
+  ri.addEventListener('change',upd);
+  // label extra
+  const lbl=document.getElementById('lbl-dia-ri');
+  if(lbl){ri.addEventListener('input',()=>{lbl.textContent=ri.value?(' · '+diaSemanaISO(ri.value)):'';});ri.addEventListener('change',()=>{lbl.textContent=ri.value?(' · '+diaSemanaISO(ri.value)):'';});}
+}
+
+/* ─── ARTISTA PRINCIPAL (v16b) ─── */
+function garantirArtista(){
+  if(!DB.equipe)DB.equipe={};
+  const tem=Object.values(DB.equipe).some(m=>m.nome&&m.nome.toLowerCase().includes('bruno luah'));
+  if(!tem){
+    const id='eq'+uid();
+    DB.equipe[id]={id,nome:'Bruno Luah',fn:'Voz e violão',val:0,perc:0,principal:true};
+    setTimeout(()=>toast('Bruno Luah adicionado à equipa como artista principal'),300);
+  }
+}
+/* ─── SUGESTÕES DE LOCAIS (v16) ─── */
+function guardarLocal(l){
+  l=(l||'').trim();if(!l)return;
+  DB.locais=DB.locais||[];
+  DB.locais=DB.locais.filter(x=>x.toLowerCase()!==l.toLowerCase());
+  DB.locais.unshift(l);
+  if(DB.locais.length>30)DB.locais=DB.locais.slice(0,30);
+  renderLocaisSugestoes();
+}
+function renderLocaisSugestoes(){
+  ['dl-sug-locais-show','dl-sug-locais-serie','dl-sug-locais-edit'].forEach(id=>{
+    const dl=document.getElementById(id);if(!dl)return;
+    dl.innerHTML=(DB.locais||[]).map(x=>`<option value="${x.replace(/"/g,'&quot;')}">`).join('');
+  });
+}
+function localFocado(id){const i=document.getElementById(id);if(!i)return false;
+  return document.activeElement===i||document.activeElement&&document.activeElement.id===id;}
 async function addShow(){
   const nome=$('sn').value.trim();
   if(!nome){toast('Informe o nome do show','err');return;}
@@ -1741,7 +1823,7 @@ async function addShow(){
   const id=uid();
   DB.shows[id]={id,nome,data,hora:$('sh').value||'20:00',valor,liq:+(valor*(1-ImpostoConfig())).toFixed(2),imp:+(valor*ImpostoConfig()).toFixed(2),prazo,tipo:$('stp').value,obs:$('sobs').value.trim(),local:$('sl').value.trim(),status:'agendado',recData:addDays(data,prazo),serie:false,falta:!valor?['valor']:[],escalacao};
    await save();
-  $('sn').value='';$('sl').value='';$('sv').value='';$('sobs').value='';
+  $('sn').value='';guardarLocal($('sl').value);$('sl').value='';$('sv').value='';$('sobs').value='';
   _escalaTemp['s']={};renderEscala('s');
   toast('Show adicionado!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
@@ -1758,7 +1840,7 @@ async function addSerie(){
   const id=uid();
   DB.series[id]={id,nome,dia:+$('rd').value,hora:$('rh').value||'21:00',valor,liq:+(valor*(1-ImpostoConfig())).toFixed(2),imp:+(valor*ImpostoConfig()).toFixed(2),prazo:+($('rp')?.value||30),inicio,fim:$('rf').value||'',tipo:$('rtp').value,ferias,cancelados:[],escalacao,local:$('rl').value.trim()};
    gerarSerie(id); await save();
-  $('rn').value='';$('rl').value='';$('rv').value='';$('ri').value='';$('rf').value='';
+  $('rn').value='';guardarLocal($('rl').value);$('rl').value='';$('rv').value='';$('ri').value='';$('rf').value='';
   document.querySelectorAll('#mferias input').forEach(c=>c.checked=false);
   _escalaTemp['r']={};renderEscala('r');
   toast('Série criada!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
@@ -2303,9 +2385,12 @@ function renderCartoes(){
   ksSet.add(hjK);
   const ks=[...ksSet].sort();
   if(!ks.length){e.innerHTML=`<div class="empty" style="padding:26px 10px">Lançamentos de cartão sem data válida.</div>`;return;}
-  window._carFiltro=window._carFiltro||'Todos';
+  window._carFiltro=window._carFiltro||'Todos';window._carBusca=window._carBusca||'';
   const bancoDetetado=(f)=>detetarBanco(f);
-  const cartFilt=window._carFiltro==='Todos'?cartoes:cartoes.filter(f=>{const d=(f.desc||'').toLowerCase();if(window._carFiltro==='Outros')return d==='outros'||!FINTX_BANCOS.some(b=>b.re.test(d));const b=FINTX_BANCOS.find(x=>x.nome===window._carFiltro);if(b)return b.re.test(d)||(f.cartao||'')===window._carFiltro;const _cf=window._carFiltro;let ft=(DB.faturas||{})[_cf];let ftNome=_cf;if(!ft)for(const k in DB.faturas){const f=(DB.faturas||{})[k];if(f&&f.banco&&f.banco!==k&&f.banco+' — '+k===_cf){ft=f;ftNome=k;break;}}if(ft&&ft.banco){if(ftNome!==ft.banco){const tk=d.replace(/cartão|credito|crédito/gi,'').replace(/—|-/g,' ').replace(/ +/g,' ').trim();return (f.cartao||'')===ftNome||tk.includes(ftNome.toLowerCase().trim());}return FINTX_BANCOS.find(x=>x.nome===ft.banco)?.re.test(d)||(f.cartao||'')===ft.banco;}return false;});
+  const normDesc=(f)=>(f.desc||'').toLowerCase().replace(/[—–\-]/g,' ').replace(/cartão|credito|crédito/gi,'').replace(/ +/g,' ').trim();
+  const buscaAtiva=window._carBusca&&window._carBusca.trim().length>=2;
+  const buscaNorm=buscaAtiva?window._carBusca.trim().toLowerCase():'';
+  const cartFilt=cartoes.filter(f=>{const d=(f.desc||'').toLowerCase();if(window._carFiltro==='Todos'&&!buscaAtiva)return true;const dB=normDesc(f);if(buscaAtiva&&!dB.includes(buscaNorm))return false;if(window._carFiltro==='Outros')return d==='outros'||!FINTX_BANCOS.some(b=>b.re.test(d));const b=FINTX_BANCOS.find(x=>x.nome===window._carFiltro);if(b)return b.re.test(d)||(f.cartao||'')===window._carFiltro;const _cf=window._carFiltro;let ft=(DB.faturas||{})[_cf];let ftNome=_cf;if(!ft)for(const k in DB.faturas){const f=(DB.faturas||{})[k];if(f&&f.banco&&f.banco!==k&&f.banco+' — '+k===_cf){ft=f;ftNome=k;break;}}if(ft&&ft.banco){if(ftNome!==ft.banco){const tk=d.replace(/cartão|credito|crédito/gi,'').replace(/—|-/g,' ').replace(/ +/g,' ').trim();return (f.cartao||'')===ftNome||tk.includes(ftNome.toLowerCase().trim());}return FINTX_BANCOS.find(x=>x.nome===ft.banco)?.re.test(d)||(f.cartao||'')===ft.banco;}if(_cf==='Todos')return true;return false;});
   // Cards mensais
   const cards=ks.map(k=>{
     const [y,m]=k.split('-').map(Number);
@@ -2322,7 +2407,7 @@ function renderCartoes(){
     // Por banco
     const porBanco={};
     fins.forEach(f=>{const b=bancoDetetado(f)||'Outros';porBanco[b]=(porBanco[b]||0)+f.valor;});
-    const _cfk=window._carFiltro!=='Todos';const bancoRows=Object.entries(porBanco).sort((a,b)=>b[1]-a[1]).map(([b,v])=>{const _it=_cfk?fins.filter(f=>(bancoDetetado(f)||'Outros')===b):[];return`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--line)"><span>${b}${_it.length?' · '+_it.map(x=>x.desc).join(' · '):''}</span><b style="color:var(--rose)">-${fmt(v)}</b></div>`;}).join('');
+    const _cfk=window._carFiltro!=='Todos'||buscaAtiva;const bancoRows=Object.entries(porBanco).sort((a,b)=>b[1]-a[1]).map(([b,v])=>{const _it=_cfk?fins.filter(f=>(bancoDetetado(f)||'Outros')===b):[];return`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--line)"><span>${b}${_it.length?' · '+_it.map(x=>x.desc).join(' · '):''}</span><b style="color:var(--rose)">-${fmt(v)}</b></div>`;}).join('');
     return`<div class="card" style="border-color:rgba(200,180,120,.25);margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gold)">${label}</span>${(DB.faturas||{})[window._carFiltro]&&window._carFiltro!=="Todos"?`<span style="font-size:11px;color:var(--t3);font-weight:700;margin-left:7px">Fecha dia ${(DB.faturas||{})[window._carFiltro].fecha||5} · Vence dia ${(DB.faturas||{})[window._carFiltro].vence||10}</span>`:""}
@@ -2333,7 +2418,7 @@ function renderCartoes(){
         <div style="background:var(--s3);border-radius:var(--rs);padding:8px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Parcelado</div><div style="font-size:13px;font-weight:700;color:var(--amber)">${fmt(totalParc)}</div></div>
         <div style="background:var(--s3);border-radius:var(--rs);padding:8px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Em aberto</div><div style="font-size:13px;font-weight:700;color:var(--rose)">${fmt(vAbertas)}</div></div>
       </div>
-      ${fins.filter(f=>f._noProx).length?`<div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:4px">${fins.filter(f=>f._noProx).length} lançamento(s) comprado(s) após o fechamento — na fatura do mês seguinte</div>`:''}${(fins.length>1||window._carFiltro!=='Todos')?`<div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Por banco</div>${bancoRows}`:''}
+      ${fins.filter(f=>f._noProx).length?`<div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:4px">${fins.filter(f=>f._noProx).length} lançamento(s) comprado(s) após o fechamento — na fatura do mês seguinte</div>`:''}${(_cfk||fins.length>1)?`<div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Por banco</div>${bancoRows}`:''}
     </div>`;
   }).join('');
   // KPI consolidado
@@ -2346,10 +2431,11 @@ function renderCartoes(){
   </div>`;
   const carOpts=['Todos'].concat(FINTX_BANCOS.map(b=>b.nome)).filter((v,i,a)=>a.indexOf(v)===i);
   Object.entries(DB.faturas||{}).forEach(([n,f])=>{if(f&&f.banco&&f.banco!==n)carOpts.push(n);});
-  const filtroSel=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px">${carOpts.map(n=>{const f=(DB.faturas||{})[n];const lab=f&&f.banco&&f.banco!==n?(f.banco+' — '+n):n;return `<button class="btn sm ghost" onclick="window._carFiltro='${n}';renderCartoes();" style="font-size:11px;padding:5px 11px;border-radius:var(--r-pill);border-color:${n===window._carFiltro?'var(--gold)':'rgba(200,180,120,.3)'};color:${n===window._carFiltro?'var(--gold)':'var(--t2)'};font-weight:700">${lab}</button>`;}).join('')}</div>`;
+  const buscaSel=`<input id="busca-cartoes" type="text" value="${window._carBusca}" placeholder="Buscar nas compras..." oninput="window._carBusca=this.value;renderCartoes();" style="flex:1;min-width:140px;font-size:12px;padding:7px 11px;border-radius:var(--r-pill);background:var(--s2);border:1px solid var(--line);color:var(--tx)">`;
+const filtroSel=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px">${carOpts.map(n=>{const f=(DB.faturas||{})[n];const lab=f&&f.banco&&f.banco!==n?(f.banco+' — '+n):n;return `<button class="btn sm ghost" onclick="window._carFiltro='${n}';renderCartoes();" style="font-size:11px;padding:5px 11px;border-radius:var(--r-pill);border-color:${n===window._carFiltro?'var(--gold)':'rgba(200,180,120,.3)'};color:${n===window._carFiltro?'var(--gold)':'var(--t2)'};font-weight:700">${lab}</button>`;}).join('')}</div>`;
   const graficoBtn=`<button class="btn sm edit" onclick="toggleGrafCar()" style="margin-left:auto">${(window._carGrafOk?'Ocultar':'Exibir')+' gráfico'}</button>`;
   const faturasBtn=`<button class="btn sm edit" onclick="toggleFaturas()" style="margin-left:7px">Faturas</button>`;
-  e.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px">Gastos com cartões de crédito<span style="flex:1;height:1px;background:var(--line)"></span>${filtroSel}${graficoBtn}${faturasBtn}</div>
+  e.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px">Gastos com cartões de crédito<span style="flex:1;height:1px;background:var(--line)"></span>${buscaSel}${filtroSel}${graficoBtn}${faturasBtn}</div>
   <div id="pnl-faturas" style="display:none"></div>`+(window._carGrafOk?grafCar(cartoes):'')+kpi+cards;
 }
 
@@ -2821,8 +2907,8 @@ function abrirEditShow(id){
   $('es-status').value=sh.status||'agendado';
   $('es-obs').value=sh.obs||'';$('es-local').value=sh.local||'';
   // Carregar escalacao existente no seletor temporário de edição
-  _escalaTemp['es']={};
-  (sh.escalacao||[]).forEach(x=>{ if(x.mbId && DB.equipe[x.mbId]) _escalaTemp['es'][x.mbId]=true; });
+  _escalaTemp['es']={};autoEscala('es');
+  escList(sh).forEach(x=>{ if(x.mbId && DB.equipe[x.mbId]) _escalaTemp['es'][x.mbId]=true; });
   renderEscala('es');
   const m=$('modal-show');m.style.display='flex';
   setTimeout(()=>m.addEventListener('click',function h(e){if(e.target===m){fecharModalShow();m.removeEventListener('click',h);}}),100);
@@ -2837,7 +2923,7 @@ async function salvarEditShow(){
     return{mbId:mid,nome:m.nome,fn:m.fn,val:vShow};
   });
   Object.assign(DB.shows[id],{nome:$('es-nome').value.trim(),local:$('es-local').value.trim(),data,hora:$('es-hora').value||'20:00',valor,liq:+(valor*(1-ImpostoConfig())).toFixed(2),imp:+(valor*ImpostoConfig()).toFixed(2),prazo,tipo:$('es-tipo').value,status:$('es-status').value,obs:$('es-obs').value.trim(),recData:addDays(data,prazo),falta:!valor?['valor']:[],escalacao});
-  await save();fecharModalShow();
+  guardarLocal($('es-local').value);await save();fecharModalShow();
   toast('Show atualizado'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
 
@@ -2858,7 +2944,192 @@ async function salvarEditFin(){
   await save();fecharModalFin();toast('Lançamento atualizado');render();
 }
 
-function render(){rDash();rShows();rSeries();rEq();rPags();rPagSel();rFin();rDivs();rEquip();renderRel();renderSaude();renderCartoes();}
+/* ─── PAINEL FINANCEIRO DO DASHBOARD (v16d) ─── */
+function rPainel(){
+  const e=$('d-painel');if(!e)return;
+  const now=new Date(),mes=now.getMonth(),ano=now.getFullYear();
+  const ms=`${ano}-${String(mes+1).padStart(2,'0')}`;
+  const showsMes=arr(DB.shows).filter(s=>s.data&&s.data.startsWith(ms)&&s.status!=='cancelado');
+  const finsMes=arr(DB.fin).filter(f=>f.data&&f.data.startsWith(ms));
+  const brutoShows=showsMes.reduce((a,b)=>a+(b.valor||0),0);
+  const liqShows=showsMes.reduce((a,b)=>a+(b.liq||0),0);
+  const impShows=showsMes.reduce((a,b)=>a+(b.imp||0),0);
+  // Equipa: somar o valor designado por membro nos shows do mês
+  const pagaEq=showsMes.reduce((a,b)=>a+(escList(b).reduce((x,m)=>x+(m.val||0),0)),0);
+  // Receitas e despesas de lançamentos
+  const recFins=finsMes.filter(f=>f.tipo==='rec').reduce((a,b)=>a+(b.valor||0),0);
+  const despFins=finsMes.filter(f=>f.tipo!=='rec').reduce((a,b)=>a+(b.valor||0),0);
+  const recFinsImp=recFins*ImpostoConfig();
+  const impTotal=impShows+recFinsImp;
+  // Dívidas: em aberto na aba Dívidas (empresa) + dívidas fixas em DB.fin deste mês? dívidas em DB.div já são geridas; parcelas entram em despFins.
+  const divAberto=arr(DB.div).filter(d=>d.cat==='empresa').reduce((a,b)=>a+Math.max(0,(b.total||0)-(b.pago||0)),0);
+  const divVencMes=arr(DB.div).filter(d=>d.cat==='empresa'&&d.venc&&d.venc.startsWith(ms)).reduce((a,b)=>a+Math.max(0,(b.total||0)-(b.pago||0)),0);
+  const bruno=liqShows+recFins-impTotal-pagaEq;
+  const caixa=bruno-divAberto;
+  const cards=[
+    {l:'Pagamento da equipe',v:pagaEq,c:'var(--sky)',sub:`${Object.keys(DB.equipe||{}).length} membro(s) em ${showsMes.length} show(s)`},
+    {l:'Dívidas',v:divAberto,c:'var(--rose)',sub:divVencMes>0?`Vence ${MS[mes]}: ${fmt(divVencMes)}`:'Em aberto'},
+    {l:'Impostos',v:impTotal,c:'var(--amber)',sub:`Alíquota ${Math.round(ImpostoConfig()*100)}%`},
+    {l:'Para o Bruno',v:bruno,c:'var(--teal)',sub:'Receitas − imposto − equipe'},
+    {l:'Caixa da empresa',v:caixa,c:caixa>=0?'var(--teal)':'var(--rose)',sub:'Bruno − dívidas em aberto'},
+  ];
+  $('d-p-mes').textContent=M[mes];
+  e.innerHTML=cards.map(c=>`
+    <div style="background:var(--s2);border:1px solid var(--line);border-left:4px solid ${c.c};border-radius:13px;padding:13px 15px">
+      <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px">${c.l}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:${c.c};margin-top:5px">${fmt(c.v)}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:4px">${c.sub}</div>
+    </div>`).join('');
+}
+
+function rPainelShows(){
+  const e=$('pan-shows');if(!e)return;
+  const now=new Date(),mes=now.getMonth(),ano=now.getFullYear();
+  const ms=`${ano}-${String(mes+1).padStart(2,'0')}`;
+  const shows=arr(DB.shows).filter(x=>x.data&&x.data.startsWith(ms)&&x.status!=='cancelado');
+  const bruto=shows.reduce((a,b)=>a+(b.valor||0),0);
+  const liq=shows.reduce((a,b)=>a+(b.liq||0),0);
+  const pagaEq=shows.reduce((a,b)=>a+(escList(b).reduce((x,m)=>x+(m.val||0),0)),0);
+  const prox=arr(DB.shows).filter(x=>x.data&&x.data>today()&&x.status!=='cancelado').sort((a,b)=>a.data.localeCompare(b.data)).slice(0,1)[0];
+  const cards=[
+    {l:`Shows em ${M[mes]}`,v:shows.length,c:'var(--gold)',sub:bruto>0?`Bruto ${fmt(bruto)}`:'Sem shows este mês'},
+    {l:'Receita líquida do mês',v:liq,c:'var(--teal)',sub:liq>0?`Após imposto`:`${fmt(bruto)} bruto`},
+    {l:'Pagamento da equipe',v:pagaEq,c:'var(--sky)',sub:pagaEq>0?`${Object.keys(DB.equipe||{}).length} membro(s)`:'Sem escalacao este mês'},
+    {l:'Próximo show',v:prox?prox.data.slice(8,10)+' '+M[parseInt(prox.data.slice(5,7))-1].slice(0,3):'—',c:'var(--vio2)',sub:prox?`${prox.nome||''} · ${fmt(prox.valor||0)}`:'Sem shows agendados'},
+  ];
+  e.style.display='grid';e.style.gridTemplateColumns='repeat(auto-fit,minmax(150px,1fr))';e.style.gap='10px';
+  e.innerHTML=cards.map(c=>`
+    <div style="background:var(--s2);border:1px solid var(--line);border-left:4px solid ${c.c};border-radius:13px;padding:12px 14px">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px">${c.l}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:${c.c};margin-top:4px">${c.v}</div>
+      <div style="font-size:10px;color:var(--t3);margin-top:3px">${c.sub}</div>
+    </div>`).join('');
+}
+function rPainelFin(){
+  const e=$('pan-fin');if(!e)return;
+  const now=new Date(),mes=now.getMonth(),ano=now.getFullYear();
+  const ms=`${ano}-${String(mes+1).padStart(2,'0')}`;
+  const fins=arr(DB.fin).filter(f=>f.data&&f.data.startsWith(ms));
+  const rec=fins.filter(f=>f.tipo==='rec').reduce((a,b)=>a+(b.valor||0),0);
+  const desp=fins.filter(f=>f.tipo==='desp'||f.tipo==='casa').reduce((a,b)=>a+(b.valor||0),0);
+  const casa=fins.filter(f=>f.tipo==='casa').reduce((a,b)=>a+(b.valor||0),0);
+  const cart=fins.filter(f=>f.pgto==='credito-vista'||f.pgto==='credito-parcelado').reduce((a,b)=>a+(b.valor||0),0);
+  const saldo=rec-desp;
+  const cards=[
+    {l:'Receitas do mês',v:rec,c:'var(--teal)',sub:`${fins.filter(f=>f.tipo==='rec').length} lançamento(s)`},
+    {l:'Despesas empresa',v:desp-casa,c:'var(--rose)',sub:casa>0?`Casa inclusa: ${fmt(casa)}`:'Despesas totais'},
+    {l:'Cartões de crédito',v:cart,c:'var(--amber)',sub:cart>0?`Via fatura`:'Sem uso este mês'},
+    {l:'Saldo do mês',v:saldo,c:saldo>=0?'var(--teal)':'var(--rose)',sub:saldo>=0?'Receitas − despesas':'Acima das receitas'},
+  ];
+  e.style.display='grid';e.style.gridTemplateColumns='repeat(auto-fit,minmax(150px,1fr))';e.style.gap='10px';
+  e.innerHTML=cards.map(c=>`
+    <div style="background:var(--s2);border:1px solid var(--line);border-left:4px solid ${c.c};border-radius:13px;padding:12px 14px">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px">${c.l}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:${c.c};margin-top:4px">${fmt(c.v)}</div>
+      <div style="font-size:10px;color:var(--t3);margin-top:3px">${c.sub}</div>
+    </div>`).join('');
+}
+function rPainelEq(){
+  const e=$('pan-eq');if(!e)return;
+  const now=new Date(),mes=now.getMonth(),ano=now.getFullYear();
+  const ms=`${ano}-${String(mes+1).padStart(2,'0')}`;
+  const shows=arr(DB.shows).filter(x=>x.data&&x.data.startsWith(ms)&&x.status!=='cancelado');
+  const pagaEq=shows.reduce((a,b)=>a+(escList(b).reduce((x,m)=>x+(m.val||0),0)),0);
+  const membros=Object.keys(DB.equipe||{}).length;
+  const pros=arr(Object.values(DB.equipe||{})).reduce((a,m)=>a+(m.pro||0),0);
+  const cards=[
+    {l:'Pagamento da equipe',v:pagaEq,c:'var(--sky)',sub:pagaEq>0?`Em ${shows.length} show(s) do mês`:'Nenhum show este mês'},
+    {l:'Pró-labore mensal',v:pros,c:'var(--amber)',sub:`${membros} membro(s) na equipe`},
+    {l:'Mais escalado(a)',v:(()=>{const por={};shows.forEach(x=>escList(x).forEach(m=>{por[m.nome]=(por[m.nome]||0)+(m.val||0);}));const k=Object.keys(por).sort((a,b)=>por[b]-por[a])[0];return k||'—';})(),c:'var(--gold)',sub:(()=>{const por={};shows.forEach(x=>escList(x).forEach(m=>{por[m.nome]=(por[m.nome]||0)+(m.val||0);}));const k=Object.keys(por).sort((a,b)=>por[b]-por[a])[0];return k?fmt(por[k]):'Sem escalacao';})()},
+  ];
+  e.style.display='grid';e.style.gridTemplateColumns='repeat(auto-fit,minmax(150px,1fr))';e.style.gap='10px';
+  e.innerHTML=cards.map(c=>`
+    <div style="background:var(--s2);border:1px solid var(--line);border-left:4px solid ${c.c};border-radius:13px;padding:12px 14px">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px">${c.l}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:${c.c};margin-top:4px">${c.v}</div>
+      <div style="font-size:10px;color:var(--t3);margin-top:3px">${c.sub}</div>
+    </div>`).join('');
+}
+
+
+/* ---- NOTAS FISCAIS (v16g) ---- */
+function rNotasPend(){
+  const e=$('lista-notas-pend');if(!e)return;
+  const hoje=today();
+  const pend=arr(DB.shows).filter(x=>x.status==='agendado'&&x.data&&x.data<=addDays(hoje,60)).sort((a,b)=>a.data.localeCompare(b.data));
+  if(!pend.length){e.innerHTML=`<div style="text-align:center;padding:22px;color:var(--t3);font-size:13px">Nenhuma nota a emitir nos próximos 60 dias.<br><small>Shows agendados aparecem aqui quando a data se aproxima.</small></div>`;return;}
+  e.innerHTML=pend.map(x=>`
+    <div class="card glass" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:14px;font-weight:700">${x.nome||'Sem nome'} <span class="bdg a" style="font-size:9px">${x.serieId?'Série':'Pontual'}</span></div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${fmtD(x.data)} · ${x.local||''} · ${fmt(x.valor||0)}</div>
+          ${x.nfPrev?`<div style="font-size:11px;color:var(--gold);margin-top:2px">Emissão prevista: ${fmtD(x.nfPrev)}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <button class="btn sm pri" onclick="emitirNfDoShow('${x.id}')">Emitir NF</button>
+          <input type="date" value="${x.nfPrev||''}" onchange="setNfPrev('${x.id}',this.value)" style="font-size:11px;background:var(--s2);border:1px solid var(--line);border-radius:8px;color:var(--tx);padding:4px 6px;text-align:center" title="Previsão de emissão">
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function rNotasEmit(){
+  const e=$('lista-notas-emit');if(!e)return;
+  const hoje=today();
+  const nfShows=arr(DB.shows).filter(x=>x.status==='nf').sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const nfMes=arr(DB.nfMensal||{}).sort((a,b)=>(b.dtEmissao||'').localeCompare(a.dtEmissao||''));
+  if(!nfShows.length&&!nfMes.length){e.innerHTML=`<div style="text-align:center;padding:22px;color:var(--t3);font-size:13px">Nenhuma nota emitida ainda.</div>`;return;}
+  const row=(l,v,sub,bdg,acts)=>`
+    <div class="card glass" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:13px;font-weight:700">${l} <span class="bdg ${bdg}" style="font-size:9px">${bdg==='g'?'Recebida':'Emitida'}</span></div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">${sub}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--teal)">${fmt(v)}</div>
+          ${acts}
+        </div>
+      </div>
+    </div>`;
+  let html='';
+  html+=nfShows.map(x=>row(x.nome,x.valor||0,`${fmtD(x.data)}${x.serieId?' · Série':' · Pontual'} · Recebimento em ${x.recData||fmtD(addDays(x.data,30))}`,'g',`<button class="btn sm ghost" onclick="marcarShowRecebido('${x.id}')">Marcar recebido</button>`)).join('');
+  html+=nfMes.map(n=>{
+    const nome=n.nomeShow?`NF de "${n.nomeShow}"`:(n.tipo==='serie'?'NF mensal da série':'NF');
+    const serie=n.serieId?((DB.series||{})[n.serieId]||{}).nome||n.serieId:'';
+    const sub=`Emitida ${fmtD(n.dtEmissao)}${serie?' · '+serie:''} · Recebimento previsto ${fmtD(n.dtRecebimento)}`;
+    const pend=n.status==='recebida';
+    return row(nome,n.valor||0,sub,pend?'g':'b',`<button class="btn sm ghost" onclick="marcarNfRecebida('${n.id}')">Marcar recebida</button><button class="btn sm ghost" style="color:var(--rose)" onclick="delNfMensal('${n.id}')">Excluir</button>`);
+  }).join('');
+  e.innerHTML=html;
+}
+
+async function emitirNfDoShow(id){
+  const x=DB.shows[id];if(!x)return;
+  x.status='nf';
+  x.recData=x.recData||addDays(x.data||today(),30);
+  await save();
+  toast('NF emitida para "'+x.nome+'". Recebimento em '+fmtD(x.recData));
+  render();
+}
+function setNfPrev(id,v){
+  const x=DB.shows[id];if(!x)return;
+  if(v)x.nfPrev=v;else delete x.nfPrev;
+  saveLocal();
+}
+function renderNotas(){rNotasPend();rNotasEmit();}
+
+
+// Normaliza escalacao (aceita formato antigo em objeto {mbId:{...}} e novo em array)
+function escList(sh){
+  const e=sh&&sh.escalacao;
+  if(!e) return [];
+  if(Array.isArray(e)) return e;
+  if(typeof e==='object') return Object.keys(e).map(k=>{const v=e[k];return {mbId:k,nome:v.nome||v.m||k,val:+(v.val||0),fn:v.fn||''};});
+  return [];
+}
+function render(){renderNotas();rPainelShows();rPainelFin();rPainelEq();renderLocaisSugestoes();rPainel();rDash();rShows();rSeries();rEq();rPags();rPagSel();rFin();rDivs();rEquip();renderRel();renderSaude();renderCartoes();}
 
 function rDash(){
   const now=new Date(),mes=now.getMonth(),ano=now.getFullYear();
@@ -2953,7 +3224,7 @@ function showItem(sh){
   const past=sh.data<today();
   const stColor={agendado:'var(--amber)',nf:'var(--sky)',recebido:'var(--teal)'}[sh.status]||'var(--t3)';
   const stLabel={agendado:'Agendado',nf:'NF emitida',recebido:'Recebido'}[sh.status]||sh.status;
-  const custoEq=sh.escalacao&&sh.escalacao.length?sh.escalacao.reduce((a,m)=>a+(m.val||0),0):0;
+  const custoEq=escList(sh).reduce((a,m)=>a+(m.val||0),0);
   const saldo=+(sh.liq||0)-custoEq;
   return`<div style="background:var(--s2);border:1px solid var(--line);border-left:4px solid ${sh.serie?'var(--vio)':'var(--teal)'};border-radius:14px;padding:14px;margin-bottom:9px;${past?'opacity:.6':''}">
     <!-- Topo: data + status + nome -->
@@ -2984,7 +3255,7 @@ function showItem(sh){
       </div>
     </div>
     ${saldo!==0&&custoEq?`<div style="font-size:11px;color:var(--t2);margin-bottom:10px;text-align:center">Saldo do artista: <b style="color:${saldo>=0?'var(--teal)':'var(--rose)'}">${fmt(saldo)}</b></div>`:''}
-    ${sh.escalacao&&sh.escalacao.length?`<div style="font-size:10px;color:var(--t3);margin-bottom:10px">Escalação: ${sh.escalacao.map(x=>x.nome).join(' · ')}</div>`:''}
+    ${escList(sh).length?`<div style="font-size:10px;color:var(--t3);margin-bottom:10px">Escalação: ${escList(sh).map(x=>x.nome).join(' · ')}</div>`:''}
     <!-- Ações compactas -->
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button onclick="abrirEditShow('${sh.id}')" style="flex:1;background:rgba(154,144,120,.05);color:var(--sky);border:1px solid rgba(154,144,120,.25);border-radius:8px;padding:8px 0;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter">Editar</button>
