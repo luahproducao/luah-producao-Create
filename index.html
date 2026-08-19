@@ -1600,25 +1600,42 @@ function sub(id,btn){
 /* ═══════ QUICK-ADD ═════════════════════════════ */
 async function qaAdd(){
   const txt=$('qa-txt').value.trim();if(!txt)return;
-  // Detectar forma de pagamento no texto: "pix", "débito", "crédito", "dinheiro", "parcelado Nx"
-  let pgto='',parc=null;
+  // Detetar banco (C6, Nubank, Inter...) antes de tudo — define crédito
   const tl=txt.toLowerCase();
-  if(/parcelado?\s*(\d+)x?/i.test(tl)){const mx=tl.match(/parcelado?\s*(\d+)x?/i);parc=+mx[1];pgto='credito-parcelado';}
+  let banco=null;
+  for(const b of FINTX_BANCOS){if(b.re.test(tl)){banco=b.nome;break;}}
+  // Detectar forma de pagamento: parcelas, banco, crédito/débito/pix/dinheiro
+  let pgto='',parc=null;
+  if(/parcelado?(\s+em\s+|\s*)(\d+)x?/i.test(tl)){const mx=tl.match(/parcelado?(\s+em\s+|\s*)(\d+)x?/i);parc=+mx[2];pgto=banco?'credito-parcelado':'credito-parcelado';}
+  else if(banco){pgto='credito-vista';}
   else if(tl.includes('crédito')||tl.includes('credito'))pgto='credito-vista';
   else if(tl.includes('débito')||tl.includes('debito'))pgto='debito';
   else if(tl.includes('pix'))pgto='pix';
   else if(tl.includes('dinheiro'))pgto='dinheiro';
-  // Remover termos de pagamento do texto para extrair nome/valor
-  const limpo=txt.replace(/parcelado?\s*\d+x?/gi,'').replace(/crédito|credito|débito|debito|dinheiro|pix/gi,'').trim();
-  const m=limpo.match(/(\d[\d\.,]*)\s*$/);
-  if(!m){toast('Informe um valor. Ex: Gasolina 250','err');return;}
-  const v=parseFloat(m[1].replace(',','.'))||0;if(!v){toast('Valor inválido','err');return;}
-  const nome=limpo.replace(/\d[\d\.,]*\s*$/,'').replace(/R?\$\s*/,'').trim()||'Gasto';
+  // Remover termos de pagamento e lojas (ex.: "no mercado livre") para extrair nome/valor
+  const limpo=txt.replace(/parcelado?\s*\d+x?/gi,'').replace(/no mercado livre/gi,'').replace(/crédito|credito|débito|debito|dinheiro|pix/gi,'').trim();
+  // valor pode estar em qualquer posição — usar o primeiro número isolado ou o último
+  const vm=limpo.match(/(\d[\d\.,]{2,})/);
+  if(!vm){toast('Informe um valor. Ex: Gasolina 250','err');return;}
+  const v=parseFloat(vm[1].replace(/\./g,'').replace(',','.'))||0;if(!v){toast('Valor inválido','err');return;}
+  const nome=txt.replace(/R?\$\s*/g,'').replace(/no mercado livre/gi,'Mercado Livre').replace(/\bno\s+cart[ãa]o\s+(c6|nubank|inter|itau|bradesco|santander)/gi,'').replace(/\bno\s+(c6|nubank|inter|itau|bradesco|santander)\b/gi,'').replace(/\d[\d\.,]+/g,'').replace(/em\s*\d*x?/gi,'').replace(/parcelad[oa]?s?/gi,'').replace(/\bx\b/gi,'').replace(/^(compra|compras|pagamento|pago|gasto|gastos)\s+(de|do|da|de\s+uma|num|no|na)?\s*/i,'').replace(/\b(no|na|do|da|de|num|uma)\b/gi,'').replace(/\s{2,}/g,' ').trim()||'Gasto';
+  const descFinal=(banco&&pgto.startsWith('credito')?banco+' — ':'')+nome;
   const id=uid();
-  DB.fin[id]={id,tipo:classSecao(nome,'desp'),valor:v,desc:nome,data:today(),cat:inferCat(nome),rec:classRec(nome),pgto,parc};
+  const secao=classSecao(nome,'desp');
+  DB.fin[id]={id,tipo:secao,valor:v,desc:descFinal,data:today(),cat:banco?'Cartão de crédito':inferCat(nome),rec:classRec(nome),pgto,parc,banco:banco};
+  // Se parcelado, criar as parcelas mensais (dia 10 por defeito)
+  if(parc&&parc>1){
+    const dia=10;let mm=new Date().getMonth(),yy=new Date().getFullYear();
+    for(let i=1;i<=parc;i++){
+      const d=new Date(yy,mm+i,dia);
+      const id2=uid();
+      DB.fin[id2]={id:id2,tipo:secao,valor:+(v/parc).toFixed(2),desc:`${descFinal} (${i}/${parc})`,data:d.toISOString().slice(0,10),cat:banco?'Cartão de crédito':inferCat(nome),rec:'variavel',pgto:'credito-parcelado',parc,banco:banco};
+    }
+    delete DB.fin[id];
+  }
   await save();$('qa-txt').value='';
   const pgLabel={'pix':'Pix','dinheiro':'Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':`Crédito ${parc}x`};
-  toast(''+nome+' — '+fmt(v)+(pgto?' · '+pgLabel[pgto]:''));render();
+  toast(''+descFinal+' — '+fmt(v)+(pgto?' · '+pgLabel[pgto]:''));render();
 }
 
 /* ═══════ SHOWS ═════════════════════════════════ */
@@ -2094,12 +2111,30 @@ function gerarParcelasFin(txt,opts={}){
   for(let i=0;i<n;i++){let m=mesBase+i,a=anoBase;if(m>11){m-=12;a++;}
     const data=`${a}-${String(m+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
     parcelas.push({tipo:p.tipo,valor:valorP,desc:n>1?`${p.desc} (${i+1}/${n})`:p.desc,data,cat:p.banco?'Cartão de crédito':'Outro',rec:p.tipo==='rec'?'receita':'variavel',pgto:p.pgto,parc:n>1?n:null,secao:p.secao||'desp',divId:p.div?p.div.nome:null});}
-  return{tipo:p.tipo,valor:p.valor,desc:p.desc,pgto:p.pgto,parc:n,banco:p.banco,dia,mesInicio:mesBase+1,anoInicio:anoBase,secao:p.secao,div:p.div,parcelas};
+    if(window._finTxtForcaPgto==='pix'||window._finTxtForcaPgto==='dinheiro'||window._finTxtForcaPgto==='debito'||window._finTxtForcaPgto==='credito-vista'){
+    parcelas.forEach(p=>{p.pgto=window._finTxtForcaPgto;p.banco=null;if(window._finTxtForcaPgto!=='credito-vista')p.cat=p.secao==='casa'?'Alimentação':'Outro';});
+  }
+  if(window._finTxtForcaPgto==='credito-parcelado'){parcelas.forEach(p=>{p.pgto='credito-parcelado';p.cat='Cartão de crédito';p.banco=null;});}
+const _fp=window._finTxtForcaPgto;if(_fp==='credito-vista'){p.pgto='credito-vista';p.banco=null;}
+return{tipo:p.tipo,valor:p.valor,desc:p.desc,pgto:p.pgto,parc:n,banco:p.banco,dia,mesInicio:mesBase+1,anoInicio:anoBase,secao:p.secao,div:p.div,parcelas};
 }
 function interpretarFinTXT(){
   const txt=$('ft-txt').value.trim();if(!txt){toast('Escreva o lançamento. Ex: "cartão c6 compra de computador de 5.800 parcelado em 12"','err');return;}
   const r=gerarParcelasFin(txt);
   if(r.erro){toast(r.erro,'err');return;}
+  renderPreviewFinTxt(txt,r);
+}
+function mudarMesFinTxt(valor){
+  const txt=window._finTxtOriginal||$('ft-txt').value.trim();
+  const [yy,mm]=valor.split('-').map(Number);
+  const pend=window._finTxtPend||[];const pgPend=pend.length?pend[0].pgto:null;
+  if(pgPend==='pix'||pgPend==='dinheiro'||pgPend==='debito'||pgPend==='credito-vista'){window._finTxtForcaPgto=pgPend;}
+  const r=gerarParcelasFin(txt,{mesInicio:mm});
+  delete window._finTxtForcaPgto;
+  if(r.erro){toast(r.erro,'err');return;}
+  renderPreviewFinTxt(txt,r);
+}
+function renderPreviewFinTxt(txt, r){
   const ini=`${FINTX_MESES[r.mesInicio-1]}/${r.anoInicio}`;
   const pgLabel={'pix':'Pix','dinheiro':' Dinheiro','debito':'Débito','credito-vista':'Crédito à vista','credito-parcelado':`Crédito ${r.parc}x`};
   const tipoLabel={'desp':r.secao==='casa'?'Despesa casa':'Despesa empresa','rec':'Receita'}[r.tipo]||'Lançamento';
@@ -2112,11 +2147,20 @@ function interpretarFinTXT(){
         <div style="flex:1;background:rgba(200,180,120,.08);border:1px solid rgba(200,180,120,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--gold);font-weight:700;text-transform:uppercase">${fmtD(r.parcelas[0].data)}</div><div style="font-size:12px;font-weight:700;color:var(--t2);margin-top:3px">${fmtD(r.parcelas[r.parcelas.length-1].data)}</div></div>
       </div>`
     :`<div style="background:rgba(200,180,120,.08);border:1px solid rgba(200,180,120,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:13px;font-weight:700">${pg} · ${fmtD(r.parcelas[0].data)}</div><div style="font-size:18px;font-weight:800;color:var(--gold);margin-top:3px">${fmt(r.valor)}</div></div>`;
-  window._finTxtPend=r.parcelas;
+  window._finTxtPend=r.parcelas;window._finTxtOriginal=txt;
+  const mesesOpts=[...Array(4)].map((_,i)=>{
+    let mm=r.mesInicio-1+i,yy=r.anoInicio;if(mm>11){mm-=12;yy++;}
+    return `<option value="${yy}-${mm+1}"${i===0?' selected':''}>${FINTX_MESES[mm]}/${yy}</option>`;
+  }).join('');
   $('ft-prev').innerHTML=`
     <div class="card" style="margin-top:11px;border-color:rgba(200,180,120,.25)">
       <div style="font-size:13px;font-weight:700;margin-bottom:4px">${r.parcelas.length} lançamento(s) — ${pg}<span style="font-size:10px;font-weight:700;color:var(--t3);margin-left:8px">${tipoLabel}</span></div>${divTxt}
-      <div style="font-size:12px;color:var(--t2);margin-bottom:11px">"${txt}"<br>${r.parcelas.length>1?`Parcelas mensais de <b style="color:var(--gold)">${fmt(r.parcelas[0].valor)}</b> a partir de <b style="color:var(--gold)">${ini}</b>, dia ${r.dia}.`:`Lançamento único de <b style="color:var(--gold)">${fmt(r.valor)}</b> para <b style="color:var(--gold)">${fmtD(r.parcelas[0].data)}</b>.`}</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:9px">"${txt}"<br>${r.parcelas.length>1?`Parcelas mensais de <b style="color:var(--gold)">${fmt(r.parcelas[0].valor)}</b> a partir de <b style="color:var(--gold)">${ini}</b>, dia ${r.dia}.`:`Lançamento único de <b style="color:var(--gold)">${fmt(r.valor)}</b> para <b style="color:var(--gold)">${fmtD(r.parcelas[0].data)}</b>.`}</div>
+      ${!r.pgto&&!r.banco?`<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Forma de pagamento não identificada — escolha uma:</div><div style="display:flex;flex-wrap:wrap;gap:5px">${['pix','dinheiro','debito','credito-vista','credito-parcelado'].map(k=>`<button type="button" class="btn ghost" style="font-size:11px;padding:5px 9px" onclick="aplicarPgtoFin('${k}')">${k==='pix'?'Pix':k==='dinheiro'?'Dinheiro':k==='debito'?'Débito':k==='credito-vista'?'Crédito à vista':'Crédito parcelado'}</button>`).join('')}</div></div>`:''}
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+        <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Mês da compra:</label>
+        <select onchange="mudarMesFinTxt(this.value)" style="flex:1;max-width:160px">${mesesOpts}</select>
+      </div>
       ${r.parcelas.slice(0,6).map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--line)"><span>${p.desc}</span><b style="color:${p.tipo==='rec'?'var(--teal)':'var(--rose)'}">${p.tipo==='rec'?'+':'-'}${fmt(p.valor)}</b></div>`).join('')}
       ${r.parcelas.length>6?`<div style="font-size:11px;color:var(--t3);padding:4px 0">… e mais ${r.parcelas.length-6} parcelas</div>`:''}
       <div class="sp" style="height:6px"></div>${resumo}
@@ -2124,6 +2168,15 @@ function interpretarFinTXT(){
       <div class="sp"></div>
       <button class="btn ghost" onclick="$('ft-prev').innerHTML=''">Cancelar</button>
     </div>`;
+}
+function aplicarPgtoFin(k){
+  const txt=window._finTxtOriginal||$('ft-txt').value.trim();
+  window._finTxtForcaPgto=k;
+  const r=gerarParcelasFin(txt);
+  delete window._finTxtForcaPgto;
+  if(r.erro){toast(r.erro,'err');return;}
+  if(k==='credito-parcelado'&&r.parc===1&&r.parcelas.length<=1){toast('Informe o nº de parcelas no texto (ex: em 6x)','err');return;}
+  renderPreviewFinTxt(txt,r);
 }
 async function confirmarFinTXT(){
   const ps=window._finTxtPend||[];if(!ps.length)return;
@@ -2147,6 +2200,26 @@ async function confirmarFinTXT(){
 }
 /* ── Classificação e mensagem (existente) ───────────── */
 /* ═══════ RELATÓRIO MENSAL DE CARTÕES (v10) ══════════ */
+function mesFatura(f){
+  // retorna {ano,mes,vence,noProxima} da fatura em que o lançamento é cobrado
+  const d=new Date((f.data||'').replace(/-/g,'/'));if(!d) return {ano:null,mes:null,vence:null,noProxima:false};
+  const dd=d.getDate();const ftc=DB.faturas&&DB.faturas[f.banco];
+  if(!ftc||!ftc.fecha){const mm=d.getMonth(),yy=d.getFullYear();return {ano:yy,mes:mm,vence:ftc&&ftc.vence||dd,noProxima:false};}
+  let mm=d.getMonth(),yy=d.getFullYear();if(dd>ftc.fecha){mm++;if(mm>11){mm=0;yy++;}}
+  return {ano:yy,mes:mm,vence:ftc.vence||10,noProxima:true};
+}
+function toggleFaturas(){
+  const p=$('pnl-faturas');if(!p)return;
+  if(p.style.display==='block'){p.style.display='none';return;}
+  const bancos=FINTX_BANCOS.map(b=>b.nome);
+  p.innerHTML=`<div class="card" style="margin-top:10px;border-color:rgba(200,180,120,.3)"><div style="font-size:12px;font-weight:700;margin-bottom:8px">Fatura de cada banco</div>${bancos.map(b=>{const ft=(DB.faturas||{})[b]||{fecha:5,vence:10};return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px"><span style="flex:1;font-weight:700">${b}</span><label style="color:var(--t3)">Fecha dia <input type="number" min="1" max="31" value="${ft.fecha}" id="ft-fecha-${b}" style="width:44px"></label><label style="color:var(--t3)">Vence dia <input type="number" min="1" max="31" value="${ft.vence}" id="ft-vence-${b}" style="width:44px"></label></div>`;}).join('')}<div style="display:flex;gap:7px;margin-top:8px"><button class="btn pri" style="flex:1;font-size:12px" onclick="salvarFaturas()">Salvar</button><button class="btn ghost" style="font-size:12px" onclick="toggleFaturas()">Fechar</button></div></div>`;
+  p.style.display='block';
+}
+async function salvarFaturas(){
+  DB.faturas=DB.faturas||{};
+  FINTX_BANCOS.forEach(b=>{const fe=$('ft-fecha-'+b.nome),ve=$('ft-vence-'+b.nome);if(fe&&ve){const f=+fe.value||5,v=+ve.value||10;DB.faturas[b.nome]={fecha:Math.min(31,Math.max(1,f)),vence:Math.min(31,Math.max(1,v))};}});
+  await save();toggleFaturas();render();toast('Faturas atualizadas');
+}
 function renderCartoes(){
   const e=$('cartoes');if(!e)return;
   const hj=today();
@@ -2156,7 +2229,7 @@ function renderCartoes(){
   }
   // Meses com dados (últimos 6, incl. mês atual)
   const meses={};
-  cartoes.forEach(f=>{const k=(f.data||'').slice(0,7);if(k)meses[k]=(meses[k]||0)+f.valor;});
+  cartoes.forEach(f=>{const mf=mesFatura(f);const k=mf.ano!=null?`${mf.ano}-${String(mf.mes+1).padStart(2,'0')}`:(f.data||'').slice(0,7);f._noProx=!!mf.noProxima;f._vence=mf.vence;if(k)meses[k]=(meses[k]||0)+f.valor;});
   // Incluir sempre o mês corrente no relatório (mesmo sem dados ainda)
   const hjK=today().slice(0,7);
   if(cartoes.length){meses[hjK]=meses[hjK]||0;}
@@ -2187,7 +2260,7 @@ function renderCartoes(){
     const bancoRows=Object.entries(porBanco).sort((a,b)=>b[1]-a[1]).map(([b,v])=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--line)"><span>${b}</span><b style="color:var(--rose)">-${fmt(v)}</b></div>`).join('');
     return`<div class="card" style="border-color:rgba(200,180,120,.25);margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gold)">${label}</span>
+        <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gold)">${label}</span>${(DB.faturas||{})[window._carFiltro]&&window._carFiltro!=="Todos"?`<span style="font-size:11px;color:var(--t3);font-weight:700;margin-left:7px">Vence dia ${(DB.faturas||{})[window._carFiltro].vence||10}</span>`:""}
         <span style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:700;color:var(--rose)">-${fmt(total)}</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px">
@@ -2195,7 +2268,7 @@ function renderCartoes(){
         <div style="background:var(--s3);border-radius:var(--rs);padding:8px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Parcelado</div><div style="font-size:13px;font-weight:700;color:var(--amber)">${fmt(totalParc)}</div></div>
         <div style="background:var(--s3);border-radius:var(--rs);padding:8px;text-align:center"><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Em aberto</div><div style="font-size:13px;font-weight:700;color:var(--rose)">${fmt(vAbertas)}</div></div>
       </div>
-      ${fins.length>1?`<div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Por banco</div>${bancoRows}`:''}
+      ${fins.filter(f=>f._noProx).length?`<div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:4px">${fins.filter(f=>f._noProx).length} lançamento(s) comprado(s) após o fechamento — na fatura do mês seguinte</div>`:''}${fins.length>1?`<div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Por banco</div>${bancoRows}`:''}
     </div>`;
   }).join('');
   // KPI consolidado
@@ -2208,7 +2281,9 @@ function renderCartoes(){
   </div>`;
   const filtroSel=`<select id="car-filtro" onchange="window._carFiltro=this.value;renderCartoes();" style="font-size:11px;padding:6px 26px 6px 10px;border-radius:var(--r-pill);background:var(--s1);border:1px solid rgba(200,180,120,.3);color:var(--tx);width:auto;font-family:'Inter';cursor:pointer;margin:0 0 12px;max-width:180px">${['Todos'].concat(FINTX_BANCOS.map(b=>b.nome)).filter((v,i,a)=>a.indexOf(v)===i).map(n=>`<option value="${n}" ${n===window._carFiltro?'selected':''}>${n}</option>`).join('')}</select>`;
   const graficoBtn=`<button class="btn sm edit" onclick="toggleGrafCar()" style="margin-left:auto">${(window._carGrafOk?'Ocultar':'Exibir')+' gráfico'}</button>`;
-  e.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px">Gastos com cartões de crédito<span style="flex:1;height:1px;background:var(--line)"></span>${filtroSel}${graficoBtn}</div>`+(window._carGrafOk?grafCar(cartoes):'')+kpi+cards;
+  const faturasBtn=`<button class="btn sm edit" onclick="toggleFaturas()" style="margin-left:7px">Faturas</button>`;
+  e.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px">Gastos com cartões de crédito<span style="flex:1;height:1px;background:var(--line)"></span>${filtroSel}${graficoBtn}${faturasBtn}</div>
+  <div id="pnl-faturas" style="display:none"></div>`+(window._carGrafOk?grafCar(cartoes):'')+kpi+cards;
 }
 
 function grafCar(cartoes){
@@ -2289,6 +2364,7 @@ function processarMsg(){
         <div style="background:rgba(217,192,136,.08);border:1px solid rgba(217,192,136,.2);border-radius:var(--rs);padding:11px;text-align:center"><div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase"> Variáveis</div><div style="font-size:18px;font-weight:800;color:var(--amber)">${fmt(tV)}</div></div>
       </div>
       <button class="btn pri" onclick="confirmarMsg()">Salvar ${itens.length} débitos</button>
+        <button class="btn ghost" onclick="toggleFaturas()" style="margin-left:7px;font-size:12px">Faturas</button>
       <div class="sp"></div>
       <button class="btn ghost" onclick="$('msg-prev').innerHTML=''">Cancelar</button>
     </div>`;
@@ -3172,6 +3248,19 @@ function rPrevisao(){
       </div>
     </div>`).join('');
 }
+let _selFin={};
+function toggleSelFin(on){
+  const ks2=Object.keys(arr(DB.fin).reduce((a,f)=>{const k=(f.data||'').slice(0,7);if(k)(a[k]=1);return a;},{})).sort().reverse();
+  const s2=arr(DB.fin).sort((a,b)=>b.data.localeCompare(a.data));
+  s2.forEach(f=>{if(on)_selFin[f.id]=1;else delete _selFin[f.id];});
+  render();
+}
+function delSelFin(){
+  const ids=Object.keys(_selFin);if(!ids.length){toast('Nenhum lançamento selecionado','err');return;}
+  if(!confirm(`Excluir ${ids.length} lançamento(s)?`))return;
+  ids.forEach(id=>{delete DB.fin[id];delete _selFin[id];});
+  save();render();toast(`${ids.length} lançamento(s) excluído(s)`);
+}
 function rFin(){
   const e=$('lista-fin');if(!e)return;
   const previsao=`<div class="sl">Previsão dos próximos meses</div><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px">${rPrevisao()}</div>`;
@@ -3212,7 +3301,7 @@ function rFin(){
     const pgtoClr=pgto?pgColor[pgto]:'';
     const cor=isRec?'var(--teal)':isFix?'var(--rose)':'var(--amber)';
     const borda=isRec?'var(--teal)':isFix?'var(--rose)':'var(--amber)';
-    return`<div style="display:flex;align-items:center;background:var(--s2);border:1px solid var(--line);border-left:3px solid ${borda};border-radius:12px;padding:12px 13px;margin-bottom:7px;gap:10px">
+    return`${_selFin[f.id]?'<span style=\'color:var(--gold);font-size:11px;font-weight:800;margin-right:2px\'>✓ </span>':''}<div style="display:flex;align-items:center;background:var(--s2);border:1px solid var(--line);border-left:3px solid ${borda};border-radius:12px;padding:12px 13px;margin-bottom:7px;gap:10px">
       <!-- Ícone tipo -->
       <div style="width:36px;height:36px;border-radius:10px;background:${cor}14;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;font-weight:800;color:${cor}">${isRec?'↑':(f.tipo==='casa'?'↓':(isFix?'−':'−'))}</div>
       <!-- Info principal -->
@@ -3252,7 +3341,11 @@ function rFin(){
       <span style="font-size:12px;font-weight:700;color:${saldo>=0?'var(--teal)':'var(--rose)'}">saldo ${saldo>=0?'+':''}${fmt(saldo)}</span>
     </div>${lista.slice(0,40).map(row).join('')}`;
   };
-  e.innerHTML=previsao+resumo+ks.map(blocoMes).join('');
+  const tools=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+  <label class="btn ghost" style="font-size:11px;padding:5px 10px"><input type="checkbox" onchange="toggleSelFin(this.checked)" style="margin-right:5px">Selecionar tudo</label>
+  <button class="btn ghost" style="font-size:11px;padding:5px 10px" onclick="delSelFin()">Excluir selecionados</button>
+</div>`;
+e.innerHTML=previsao+resumo+tools+ks.map(blocoMes).join('');
 }
 function rDivs(){
   ['empresa','casa'].forEach(cat=>{
