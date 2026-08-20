@@ -1257,6 +1257,15 @@ async function criarSenha(){
 function mostrarErroLogin(m){const e=$('login-erro');e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',3500);}
 function mostrarErroCriar(m){const e=$('criar-erro');e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',3500);}
 
+// ─── MODO OFF-LINE (v20): lançar sempre funciona; envia ao voltar online ───
+window.addEventListener('online', function(){
+  if(jbKey()&&jbBin()){
+    syncUI(false,'voltou online — a sincronizar…');
+    carregarJB();
+  }
+});
+window.addEventListener('offline', function(){ syncUI(false,'offline — os lançamentos ficam guardados no aparelho'); });
+
 function entrarNoApp(){
   $('login-view').style.display='none';
   if(!jbKey()||!jbBin()){
@@ -1266,6 +1275,7 @@ function entrarNoApp(){
     return;
   }
   localStorage.setItem('luah_logado','1');
+  if(!navigator.onLine){ syncUI(false,'offline — pode lançar à vontade, enviará ao voltar online'); }
   carregarJB();
 }
 
@@ -1361,6 +1371,7 @@ async function save(){
   const key = jbKey(), bin = jbBin();
   if(!key || !bin){ syncUI(false,'local'); return; }
   DB._queue = (DB._queue||[]).concat([{data: JSON.parse(JSON.stringify(DB)), id: Date.now()+'-'+Math.random().toString(36).slice(2,8)}]);
+  if(!navigator.onLine){ syncUI(false,'off-line — '+(DB._queue||[]).length+' envio(s) na fila'); }
   await drainQueue(key, bin);
 }
 async function drainQueue(key, bin){
@@ -2012,6 +2023,27 @@ async function cancelarOc(showId){
 async function delShow(id){if(!confirm('Remover show?'))return;delete DB.shows[id];await save();render();toast('Show removido');}
 
 function detetarBanco(f){const d=(f.desc||'').toLowerCase();for(const b of FINTX_BANCOS){if(b.re.test(d))return b.nome;}return 'Outros';}
+// Anti-duplicação (v20): compras a crédito + fatura total do mesmo cartão não somam duas vezes
+// Retorna aviso se já existem lançamentos no mesmo cartão/banco + mês-ano da compra cujo total coincide com o valor a lançar.
+function verificaDuplicacaoCartao(ps){
+  if(!ps||!ps.length)return null;
+  const p0=ps[0];const pg=p0.pgto||'';
+  if(pg!=='credito-parcelado'&&pg!=='credito-vista')return null;
+  const banco=p0.banco||detetarBanco(p0)||'Outros';
+  if(banco==='Outros')return null;
+  const mes=(p0.data||'').slice(0,7);
+  if(!mes)return null;
+  // lançamentos de cartão já existentes nesse banco e mês (excluindo o que vai ser lançado)
+  const existentes=arr(DB.fin).filter(f=>(f.pgto==='credito-parcelado'||f.pgto==='credito-vista')&&(f.data||'').slice(0,7)===mes&&(f.banco||detetarBanco(f))===banco);
+  if(!existentes.length)return null;
+  const somaExist=existentes.reduce((a,b)=>a+b.valor,0);
+  const totalNovo=ps.reduce((a,b)=>a+b.valor,0);
+  // duplicação provável: valor novo igual (±1%) ao total já lançado, ou o total novo <= soma existente e é fatura fechada do mesmo cartão
+  const dif=Math.abs(totalNovo-somaExist)/Math.max(1,somaExist);
+  if(dif<=0.01) return {aviso:'Já existem '+existentes.length+' lançamento(s) de cartão no '+banco+' neste mês, somando '+fmt(somaExist)+' — exatamente o mesmo valor do que vai lançar. Pode haver duplicata de valores.',soma:somaExist,banco};
+  if(dif<=0.10&&existentes.length>=2) return {aviso:'Já existem '+existentes.length+' lançamentos no '+banco+' este mês (total '+fmt(somaExist)+'), valor próximo do que vai lançar. Verifique se não está a lançar de novo o total da fatura.',soma:somaExist,banco};
+  return null;
+}
 /* ═══ Edição de séries de shows (v11) ═══ */
 function abrirEditSerie(id){
   const r=DB.series[id];if(!r)return;
@@ -2405,6 +2437,9 @@ function aplicarPgtoFin(k){
 }
 async function confirmarFinTXT(){
   const ps=window._finTxtPend||[];if(!ps.length)return;
+  // Anti-duplicação (v20): verificar compras de cartão vs fatura total
+  const dup=verificaDuplicacaoCartao(ps);
+  if(dup&&!confirm(dup.aviso+'\n\nDeseja lançar mesmo assim?'))return;
   const n=ps.length;
   let nDiv=0;
   // Dívida: abater proporcionalmente a cada parcela
@@ -2663,6 +2698,9 @@ function processarMsg(){
 }
 async function confirmarMsg(){
   const itens=window._pend||[];
+  const dupItens=itens.filter(it=>it.pgto==='credito-parcelado'||it.pgto==='credito-vista');
+  const dup=verificaDuplicacaoCartao(dupItens.map(it=>({banco:it.banco||'',desc:it.nome,data:it.data,pgto:it.pgto,valor:it.valor})));
+  if(dup&&!confirm(dup.aviso+'\n\nDeseja lançar mesmo assim?'))return;
   itens.forEach(it=>{const id=uid();DB.fin[id]={id,tipo:it.tipo,valor:it.valor,desc:it.nome,data:it.data,cat:it.cat,rec:it.rec,pgto:it.pgto||'',parc:it.parc||null};});
   const n=itens.length;window._pend=null;
    await save();render();$('msg-prev').innerHTML='';$('msgtxt').value='';
