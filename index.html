@@ -864,6 +864,18 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <button class="btn pri" onclick="interpretarFinTXT()">Interpretar</button>
     </div>
     <div id="ft-prev"></div>
+    <div class="card glass" style="border-left:3px solid var(--vio2)">
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px">Importar por imagem</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.5">Leia um extrato bancário ou uma nota fiscal. O app prepara uma prévia editável e só grava depois da sua confirmação.</div>
+      <div class="r2">
+        <div class="fg"><label>Tipo de imagem</label><select id="img-fin-tipo" onchange="toggleImgNotaModo()"><option value="extrato">Extrato bancário</option><option value="nota">Nota fiscal</option></select></div>
+        <div class="fg" id="img-nota-modo-g" style="display:none"><label>Leitura da nota</label><select id="img-nota-modo"><option value="total">Valor total</option><option value="itens">Itens da nota</option></select></div>
+      </div>
+      <input type="file" id="img-fin-file" accept="image/*" style="display:none" onchange="lerFinImagem(this)">
+      <button class="btn ghost" onclick="$('img-fin-file').click()">Escolher print ou foto</button>
+      <div id="img-fin-status" style="font-size:11px;color:var(--t3);margin-top:8px"></div>
+      <div id="img-fin-prev"></div>
+    </div>
 <div class="card glass">
       <div style="font-size:15px;font-weight:700;margin-bottom:6px">+ Vários débitos de uma vez</div>
       <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6">Qualquer formato — um por linha ou separado por vírgula:<br><em style="color:var(--vio2)">"Aluguel 1500, Gasolina 250, Luz 180"</em></div>
@@ -1245,7 +1257,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 </div>
 
 <!-- JSONBin — sem Firebase -->
-<datalist id="dl-sug-locais-show"></datalist><datalist id="dl-sug-locais-serie"></datalist><datalist id="dl-sug-locais-edit"></datalist><script>
+<datalist id="dl-sug-locais-show"></datalist><datalist id="dl-sug-locais-serie"></datalist><datalist id="dl-sug-locais-edit"></datalist><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script><script>
 'use strict';
 /* ═══════ CONSTANTES ═══════════════════════════════ */
 function ImpostoConfig(){DB.imposto=DB.imposto||{taxa:0.06};if(!DB.imposto.taxa)DB.imposto.taxa=0.06;return DB.imposto.taxa;}
@@ -1381,6 +1393,30 @@ function loadLocal(){
   }
 }
 function saveLocal(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); }catch(e){} backupLocal(); }
+function snapshotPublic(d){
+  const out=JSON.parse(JSON.stringify(d||{}));
+  delete out._queue; delete out._needsPush;
+  return out;
+}
+function countRecords(v){ return v&&typeof v==='object' ? Object.keys(v).filter(k=>k!=='_queue'&&k!=='_needsPush').length : 0; }
+function mergeCloudKeepingLocalOnly(local,cloud){
+  const base={shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{},...(cloud||{})};
+  const src=snapshotPublic(local);
+  const preferLocal=Array.isArray(local?._queue)&&local._queue.length>0;
+  let keptLocal=false;
+  Object.keys(src).forEach(k=>{
+    if(k==='meta' || k==='imposto') return;
+    const lv=src[k], cv=base[k];
+    if(lv&&typeof lv==='object'&&!Array.isArray(lv)&&cv&&typeof cv==='object'&&!Array.isArray(cv)){
+      const before=Object.keys(cv).length;
+      base[k]=preferLocal?{...cv,...lv}:{...lv,...cv};
+      if(Object.keys(base[k]).length>before || preferLocal) keptLocal=true;
+    }else if(cv===undefined){ base[k]=lv; keptLocal=true; }
+  });
+  if(src.meta||cloud?.meta) base.meta=preferLocal?{...(cloud?.meta||{}),...(src.meta||{})}:{...(src.meta||{}),...(cloud?.meta||{})};
+  if(src.imposto||cloud?.imposto) base.imposto=preferLocal?{...(cloud?.imposto||{}),...(src.imposto||{})}:{...(src.imposto||{}),...(cloud?.imposto||{})};
+  return {data:base,keptLocal};
+}
 
 /* ─── BACKUP LOCAL (v17) — versões diárias para nunca perder dados ─── */
 const BK_KEY='luah-backups';
@@ -1436,7 +1472,9 @@ async function save(){
   saveLocal();
   const key = jbKey(), bin = jbBin();
   if(!key || !bin){ syncUI(false,'local'); return; }
-  DB._queue = (DB._queue||[]).concat([{data: JSON.parse(JSON.stringify(DB)), id: Date.now()+'-'+Math.random().toString(36).slice(2,8)}]);
+  DB._queue = (DB._queue||[]).concat([{data: snapshotPublic(DB), id: Date.now()+'-'+Math.random().toString(36).slice(2,8)}]);
+  DB._needsPush=false;
+  saveLocal();
   if(!navigator.onLine){ syncUI(false,'off-line — '+(DB._queue||[]).length+' envio(s) na fila'); }
   await drainQueue(key, bin);
 }
@@ -1501,17 +1539,18 @@ async function pullFromCloud(){
     const nuvemVazia = !temDados(d);
     // PROTEÇÃO (v17): nunca substituir dados locais por banco vazio na nuvem
     if(nuvemVazia && temDados()){ syncUI(false,'protegido'); return 'protegido'; }
-    // Substituir completamente — deletados não voltam
-    const antes = JSON.stringify(DB);
-    DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...d};
+    // Mesclar sem apagar registos locais que ainda não chegaram à nuvem.
+    const merged=mergeCloudKeepingLocalOnly(DB,d);
+    DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...merged.data};
     cleanQueue();
     LU.cloudVer = ver;
     persistLU();
     garantirArtista();
     saveLocal();
-    if(antes === JSON.stringify(d)) { syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})); }
     const m = $('eqmed'); if(m && DB.meta?.mediaShow) m.value = DB.meta.mediaShow;
     render();
+    if(merged.keptLocal && temDados()){ await save(); return 'mesclado'; }
+    syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
     return nuvemVazia ? 'vazio' : true;
   }catch(e){ return false; }
 }
@@ -1567,14 +1606,16 @@ async function carregarJB(){
       if(!d || typeof d !== 'object') return;
       // PROTEÇÃO (v17): nunca substituir dados locais por banco vazio na nuvem
       if(!temDados(d) && temDados()){ syncUI(false,'protegido'); return; }
-      DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...d};
+      const merged=mergeCloudKeepingLocalOnly(DB,d);
+      DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...merged.data};
       cleanQueue();
       LU.cloudVer = ver;
       persistLU();
       saveLocal();
       const m = $('eqmed'); if(m && DB.meta?.mediaShow) m.value = DB.meta.mediaShow;
       render();
-      syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+      if(merged.keptLocal && temDados()){ await save(); }
+      else syncUI(true,'sync '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
     }catch(e){}
   }, 20000);
 }
@@ -1603,7 +1644,7 @@ async function conectarJSONBin(){
       if(jchk && jchk.record && temDados(jchk.record)){
         const ns = Object.keys(jchk.record.shows||{}).length;
         const nf = Object.keys(jchk.record.fin||{}).length;
-        if(!confirm('Este banco na nuvem já tem dados ('+ns+' shows, '+nf+' lançamentos).\n\nDeseja conectar e MESCLAR? Os dados deste aparelho serão enviados ao banco e os dados da nuvem substituirão os locais na sincronização.')){
+        if(!confirm('Este banco na nuvem já tem dados ('+ns+' shows, '+nf+' lançamentos).\n\nDeseja conectar e MESCLAR? Os registos dos dois lados serão preservados; primeiro faremos uma cópia local e depois uniremos os dados sem apagar shows ou notas.')){
           btn.textContent='Conectar e salvar dados'; btn.disabled=false; return;
         }
       }
@@ -1634,9 +1675,9 @@ async function conectarJSONBin(){
     localStorage.setItem('luah_logado','1');
     LU.cloudVer = 0; // forçar leitura da nuvem para garantir os dados mais recentes
     persistLU();
-    // Enviar os dados locais para a nuvem APENAS se houver dados locais (nunca sobrescrever dados de outro aparelho com DB vazio)
-    const temLocal = Object.keys(DB.shows||{}).length>0 || Object.keys(DB.fin||{}).length>0 || Object.keys(DB.equipe||{}).length>0;
-    if(newBin || temLocal){ await save(); }
+    // Num Bin existente, ler e mesclar primeiro; nunca enviar dados locais antigos por cima da nuvem.
+    // Apenas um Bin recém-criado recebe o estado local imediatamente.
+    if(newBin){ await save(); }
     syncUI(true,'conectado');
     const binMostrado = jbBin().slice(0,6)+'…'+jbBin().slice(-4);
     toast((newBin ? 'Banco criado e conectado!' : 'Conectado ao banco existente!')+' Bin: '+binMostrado);
@@ -1897,6 +1938,23 @@ async function qaAdd(){
 /* ── ESCALAÇÃO ──────────────────────────────────── */
 // Armazena escalação temporária enquanto preenche o formulário
 let _escalaTemp={s:{},r:{},es:{}};
+// Valores temporários por membro durante a edição/criação de um show.
+// O mapa separado mantém compatibilidade com a estrutura antiga (id -> true).
+let _escalaValTemp={s:{},r:{},es:{}};
+let _escalaManualTemp={s:{},r:{},es:{}};
+function valorPadraoMembro(m,valor){
+  return m?.perc>0&&valor ? +(valor*(m.perc/100)).toFixed(2) : +(m?.val||0);
+}
+function valorEscalaTemp(prefix,mbId,m,valor){
+  return Object.prototype.hasOwnProperty.call(_escalaValTemp[prefix],mbId)
+    ? (+_escalaValTemp[prefix][mbId]||0)
+    : valorPadraoMembro(m,valor);
+}
+function setValorEscala(prefix,mbId,value){
+  _escalaValTemp[prefix][mbId]=value;
+  _escalaManualTemp[prefix][mbId]=true;
+  atualizarPreviewEscala(prefix);
+}
 
 function autoEscala(prefix){
   if(!DB.equipe)return;
@@ -1907,33 +1965,40 @@ function renderEscala(prefix){
   const eq=arr(DB.equipe);
   const container=$('escala-'+prefix);if(!container)return;
   const valor=+($(prefix==='s'?'sv':prefix==='es'?'es-valor':'rv').value)||0;
-  const liq=+(valor*(1-ImpostoConfig())).toFixed(2);
-
   if(!eq.length){
     container.innerHTML=`<div style="font-size:12px;color:var(--t3);padding:8px 0">Nenhum membro cadastrado ainda. Use "+ Novo membro" acima.</div>`;
     return;
   }
-
   container.innerHTML=eq.map(m=>{
-    const sel=_escalaTemp[prefix][m.id];
-    const vShow=m.perc>0&&valor?+(valor*(m.perc/100)).toFixed(2):m.val;
+    const sel=!!_escalaTemp[prefix][m.id];
+    const vShow=valorEscalaTemp(prefix,m.id,m,valor);
+    const source=m.perc>0?`${m.perc.toFixed(1)}%`:(m.val>0?`padrão ${fmt(m.val)}`:'sem padrão');
     return`<div style="display:flex;align-items:center;gap:10px;background:${sel?'rgba(217,192,136,.06)':'var(--s3)'};border:1px solid ${sel?'rgba(217,192,136,.2)':'var(--line)'};border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .15s" onclick="toggleMembro('${prefix}','${m.id}')">
       <div style="width:22px;height:22px;border-radius:6px;border:2px solid ${sel?'var(--teal)':'var(--line2)'};background:${sel?'var(--teal)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s">
         ${sel?'<svg viewBox="0 0 12 10" fill="none" style="width:12px"><path d="M1 5l3.5 3.5L11 1" stroke="#050507" stroke-width="2" stroke-linecap="round"/></svg>':''}
       </div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:${sel?'var(--tx)':'var(--t2)'}">${m.nome}</div>
-        <div style="font-size:11px;color:var(--t3);margin-top:1px">${m.fn}${vShow?` · <span style="color:${sel?'var(--teal)':'var(--t3)'}">${fmt(vShow)}</span>`:''}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:1px">${m.fn} · ${source}</div>
       </div>
-      ${sel&&vShow?`<div style="font-size:13px;font-weight:700;color:var(--teal)">${fmt(vShow)}</div>`:''}
+      ${sel?`<input type="number" min="0" step="0.01" value="${vShow||''}" placeholder="valor deste show" onclick="event.stopPropagation()" oninput="setValorEscala('${prefix}','${m.id}',this.value)" style="width:112px;font-size:12px;padding:7px 8px;background:var(--s2);color:var(--tx);border:1px solid var(--line2);border-radius:7px">`:''}
     </div>`;
   }).join('');
   atualizarPreviewEscala(prefix);
 }
 
 function toggleMembro(prefix,mbId){
-  if(_escalaTemp[prefix][mbId])delete _escalaTemp[prefix][mbId];
-  else _escalaTemp[prefix][mbId]=true;
+  if(_escalaTemp[prefix][mbId]){
+    delete _escalaTemp[prefix][mbId];
+    delete _escalaValTemp[prefix][mbId];
+    delete _escalaManualTemp[prefix][mbId];
+  } else {
+    _escalaTemp[prefix][mbId]=true;
+    const m=DB.equipe[mbId];
+    const valor=+($(prefix==='s'?'sv':prefix==='es'?'es-valor':'rv').value)||0;
+    _escalaValTemp[prefix][mbId]=valorPadraoMembro(m,valor);
+    _escalaManualTemp[prefix][mbId]=false;
+  }
   renderEscala(prefix);
 }
 
@@ -1945,7 +2010,7 @@ function atualizarPreviewEscala(prefix){
   if(!selecionados.length||!valor){prev.style.display='none';return;}
   const totalEq=selecionados.reduce((a,mbId)=>{
     const m=DB.equipe[mbId];if(!m)return a;
-    return a+(m.perc>0?+(valor*(m.perc/100)).toFixed(2):m.val||0);
+    return a+valorEscalaTemp(prefix,mbId,m,valor);
   },0);
   const saldo=liq-totalEq;
   prev.style.display='block';
@@ -1980,7 +2045,7 @@ async function salvarNovoMembroEscala(prefix){
 
 // Inicializar escalação quando abre a aba
 function initEscala(prefix){garantirArtista();autoEscala(prefix);
-  _escalaTemp[prefix]={};renderEscala(prefix);
+  _escalaTemp[prefix]={};_escalaValTemp[prefix]={};_escalaManualTemp[prefix]={};renderEscala(prefix);
 }
 
 /* ─── DIA DA SEMANA AUTOMÁTICO (v16c) ─── */
@@ -2069,8 +2134,8 @@ async function addShow(){
   const prazo = !isNaN(+termo) ? +termo : 30;
   const escalacao=Object.keys(_escalaTemp['s']).filter(id=>DB.equipe[id]).map(id=>{
     const m=DB.equipe[id];
-    const vShow=m.perc>0&&valor?+(valor*(m.perc/100)).toFixed(2):m.val||0;
-    return{mbId:id,nome:m.nome,fn:m.fn,val:vShow};
+    const vShow=valorEscalaTemp('s',id,m,valor);
+    return{mbId:id,nome:m.nome,fn:m.fn,val:vShow,manual:!!_escalaManualTemp.s[id]};
   });
   const id=uid();
   const recData = termo === 'vista' ? data : (termo === '50-50' ? data : (termo === 'permuta' ? data : addDays(data, prazo)));
@@ -2078,7 +2143,7 @@ async function addShow(){
   if(termo === '50-50') toast('Lembrete: Agendado pagamento 50/50. Lançar adiantamento no financeiro.');
    await save();
   $('sn').value='';guardarLocal($('sl').value);$('sl').value='';$('sv').value='';$('sobs').value='';
-  _escalaTemp['s']={};renderEscala('s');
+  _escalaTemp['s']={};_escalaValTemp.s={};_escalaManualTemp.s={};renderEscala('s');
   toast('Show adicionado!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
 async function addSerie(){
@@ -2088,8 +2153,8 @@ async function addSerie(){
   const ferias=Array.from(document.querySelectorAll('#mferias input:checked')).map(c=>+c.value);
   const escalacao=Object.keys(_escalaTemp['r']).filter(id=>DB.equipe[id]).map(id=>{
     const m=DB.equipe[id];
-    const vShow=m.perc>0&&valor?+(valor*(m.perc/100)).toFixed(2):m.val||0;
-    return{mbId:id,nome:m.nome,fn:m.fn,val:vShow};
+    const vShow=valorEscalaTemp('r',id,m,valor);
+    return{mbId:id,nome:m.nome,fn:m.fn,val:vShow,manual:!!_escalaManualTemp.r[id]};
   });
   const id=uid();
   const termo = $('stermo-serie')?.value || '30';
@@ -2098,7 +2163,7 @@ async function addSerie(){
    gerarSerie(id); await save();
   $('rn').value='';guardarLocal($('rl').value);$('rl').value='';$('rv').value='';$('ri').value='';$('rf').value='';
   document.querySelectorAll('#mferias input').forEach(c=>c.checked=false);
-  _escalaTemp['r']={};renderEscala('r');
+  _escalaTemp['r']={};_escalaValTemp.r={};_escalaManualTemp.r={};renderEscala('r');
   toast('Série criada!'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
 function gerarSerie(sid){
@@ -2167,8 +2232,8 @@ function abrirEditSerie(id){
   // férias
   document.querySelectorAll('#mferias input').forEach(c=>{c.checked=(r.ferias||[]).includes(+c.value);});
   // escala temporária com a equipa da série
-  _escalaTemp['r']={};
-  (r.escalacao||[]).forEach(x=>{if(DB.equipe[x.mbId])_escalaTemp['r'][x.mbId]=true;});
+  _escalaTemp.r={};_escalaValTemp.r={};_escalaManualTemp.r={};
+  (r.escalacao||[]).forEach(x=>{if(DB.equipe[x.mbId]){_escalaTemp.r[x.mbId]=true;_escalaValTemp.r[x.mbId]=+(x.val||0);_escalaManualTemp.r[x.mbId]=true;}});
   if(typeof renderEscala==='function')renderEscala('r');
   const bt=$('btn-serie');if(bt){bt.textContent='Salvar alteração';bt.onclick=salvarSerie;}
   $('cv-serie').style.display='inline-flex';
@@ -2178,14 +2243,14 @@ function abrirEditSerie(id){
   toast('Editando série '+r.nome+' — altere e toque em Salvar alteração');
 }
 function cancelarEditarSerie(){
-  editSerieId=null;_escalaTemp['r']={};
+  editSerieId=null;_escalaTemp.r={};_escalaValTemp.r={};_escalaManualTemp.r={};
   if(typeof renderEscala==='function')renderEscala('r');
   limparFormSerie();
   const cv=$('cv-serie');if(cv)cv.style.display='none';
   toast('Edição cancelada');
 }
 function limparFormSerie(){editSerieId=null;$('rn').value='';$('rl').value='';$('rv').value='';$('ri').value='';$('rf').value='';
-  document.querySelectorAll('#mferias input').forEach(c=>c.checked=false);_escalaTemp['r']={};
+  document.querySelectorAll('#mferias input').forEach(c=>c.checked=false);_escalaTemp.r={};_escalaValTemp.r={};_escalaManualTemp.r={};
   if(typeof renderEscala==='function')renderEscala('r');
   const bt=$('btn-serie');if(bt){bt.textContent='Criar série recorrente';bt.onclick=addSerie;}
   const cv=$('cv-serie');if(cv)cv.style.display='none';
@@ -2197,10 +2262,10 @@ async function salvarSerie(){
   const r=DB.series[id];
   const valor=parseFloat($('rv').value)||0;
   const ferias=Array.from(document.querySelectorAll('#mferias input:checked')).map(c=>+c.value);
-  const escalacao=Object.keys(_escalaTemp['r']).filter(mid=>DB.equipe[mid]).map(mid=>{
+  const escalacao=Object.keys(_escalaTemp.r).filter(mid=>DB.equipe[mid]).map(mid=>{
     const m=DB.equipe[mid];
-    const vShow=m.perc>0&&valor?+(valor*(m.perc/100)).toFixed(2):m.val||0;
-    return{mbId:mid,nome:m.nome,fn:m.fn,val:vShow};
+    const vShow=valorEscalaTemp('r',mid,m,valor);
+    return{mbId:mid,nome:m.nome,fn:m.fn,val:vShow,manual:!!_escalaManualTemp.r[mid]};
   });
   r.nome=nome;r.local=$('rl').value.trim();r.dia=+$('rd').value;r.hora=$('rh').value||'21:00';
   r.valor=valor;r.liq=+(valor*(1-ImpostoConfig())).toFixed(2);r.imp=+(valor*ImpostoConfig()).toFixed(2);
@@ -2280,7 +2345,7 @@ function propagarMembroEditado(id,dadosNovos){
   const t=today();
   Object.values(DB.shows||{}).forEach(sh=>{
     if((sh.escalacao||[]).some(x=>x.mbId===id)){
-      sh.escalacao.forEach(x=>{ if(x.mbId===id){ x.fn=dadosNovos.fn; x.nome=dadosNovos.nome; x.val=dadosNovos.val; }});
+      sh.escalacao.forEach(x=>{ if(x.mbId===id){ x.fn=dadosNovos.fn; x.nome=dadosNovos.nome; if(!x.manual)x.val=dadosNovos.val; }});
     }
     // série criada com o membro na equipa: o modelo da série mantém a equipRef
     if(sh.serieId){
@@ -3307,7 +3372,7 @@ function abrirEditShow(id){
   $('es-prazo-bloco').style.display=(['30','60','90'].includes($('es-termo').value))?'block':'none';
   // Carregar escalacao existente no seletor temporário de edição
   _escalaTemp['es']={};autoEscala('es');
-  escList(sh).forEach(x=>{ if(x.mbId && DB.equipe[x.mbId]) _escalaTemp['es'][x.mbId]=true; });
+  escList(sh).forEach(x=>{ if(x.mbId && DB.equipe[x.mbId]){ _escalaTemp.es[x.mbId]=true; _escalaValTemp.es[x.mbId]=+(x.val||0); _escalaManualTemp.es[x.mbId]=true; } });
   renderEscala('es');
   const m=$('modal-show');m.style.display='flex';
   setTimeout(()=>m.addEventListener('click',function h(e){if(e.target===m){fecharModalShow();m.removeEventListener('click',h);}}),100);
@@ -3318,10 +3383,10 @@ async function salvarEditShow(){
   const valor=+$('es-valor').value||0,data=$('es-data').value||today();
   const termo = $('es-termo').value;
   const prazo = !isNaN(+termo) ? +termo : 30;
-  const escalacao=Object.keys(_escalaTemp['es']).filter(mid=>DB.equipe[mid]).map(mid=>{
+  const escalacao=Object.keys(_escalaTemp.es).filter(mid=>DB.equipe[mid]).map(mid=>{
     const m=DB.equipe[mid];
-    const vShow=m.perc>0&&valor?+(valor*(m.perc/100)).toFixed(2):m.val||0;
-    return{mbId:mid,nome:m.nome,fn:m.fn,val:vShow};
+    const vShow=valorEscalaTemp('es',mid,m,valor);
+    return{mbId:mid,nome:m.nome,fn:m.fn,val:vShow,manual:!!_escalaManualTemp.es[mid]};
   });
   const recData = termo === 'vista' ? data : (termo === '50-50' ? data : (termo === 'permuta' ? data : addDays(data, prazo)));
   Object.assign(DB.shows[id],{nome:$('es-nome').value.trim(),local:$('es-local').value.trim(),data,hora:$('es-hora').value||'20:00',valor,liq:+(valor*(1-ImpostoConfig())).toFixed(2),imp:+(valor*ImpostoConfig()).toFixed(2),prazo,termo,tipo:$('es-tipo').value,status:$('es-status').value,obs:$('es-obs').value.trim(),recData,falta:!valor?['valor']:[],escalacao});
@@ -3554,14 +3619,22 @@ function rDash(){
   const fins=arr(DB.fin);
   const showsMes=arr(DB.shows).filter(s=>{const d=new Date(s.data+'T12:00');return d.getMonth()===mes&&d.getFullYear()===ano&&s.status!=='cancelado';});
   const recS=showsMes.reduce((a,b)=>a+(b.liq||0),0);
-  const recO=fins.filter(f=>f.data?.startsWith(ms)&&f.tipo==='rec').reduce((a,b)=>a+b.valor,0);
+  const recO=fins.filter(f=>f.data?.startsWith(ms)&&f.tipo==='rec').reduce((a,b)=>a+(+b.valor||0),0);
   const recT=recS+recO;
-  const despT=fins.filter(f=>f.data?.startsWith(ms)&&f.tipo!=='rec').reduce((a,b)=>a+b.valor,0);
+  const despT=fins.filter(f=>f.data?.startsWith(ms)&&f.tipo!=='rec').reduce((a,b)=>a+(+b.valor||0),0);
+  const divAberto=arr(DB.div).filter(d=>d.cat==='empresa').reduce((a,b)=>a+Math.max(0,(+b.total||0)-(+b.pago||0)),0);
   const saldo=recT-despT;
-  
-  const nP = arr(DB.shows).filter(s => s.status === 'agendado' && s.data < today()).length;
-  const nE = arr(DB.shows).filter(s => s.status === 'nf').length;
-  const vE = arr(DB.shows).filter(s => s.status === 'nf').reduce((a,b)=>a+(b.liq||0),0);
+  const showsComNota=showsMes.filter(s=>s.status==='nf');
+  const showsSemNota=showsMes.filter(s=>s.status!=='nf');
+  const valorShowsEmitidos=showsComNota.reduce((a,b)=>a+(+b.liq||0),0);
+  const receitaAEntrarShows=showsMes.filter(s=>s.status!=='recebido').reduce((a,b)=>a+(+b.liq||0),0);
+  const nfsMensaisEmitidas=arr(DB.nfMensal).filter(n=>['emitida','recebida'].includes(n.status)&&String(n.dtEmissao||'').startsWith(ms));
+  const valorNfsMensais=nfsMensaisEmitidas.reduce((a,b)=>a+(+b.liq||0),0);
+  const valorNotasEmitidas=valorShowsEmitidos+valorNfsMensais;
+  const previsaoRecebimento=receitaAEntrarShows+arr(DB.nfMensal).filter(n=>n.status==='emitida'&&String(n.dtRecebimento||'').startsWith(ms)).reduce((a,b)=>a+(+b.liq||0),0)+recO;
+  const nP = showsSemNota.filter(s => s.status === 'agendado' && s.data < today()).length;
+  const nE = showsComNota.length+nfsMensaisEmitidas.length;
+  const vE = valorNotasEmitidas;
   
   // Previsão baseada no mês anterior
   const mesAnt = new Date(ano, mes - 1, 1);
@@ -3570,10 +3643,13 @@ function rDash(){
 
   $('d-mes').textContent=M[mes];
   set('d-kpis',`
-    <div class="kpi"><div class="kpi-l">Shows feitos</div><div class="kpi-v g">${showsMes.length}</div></div>
-    <div class="kpi"><div class="kpi-l">Notas Emitidas</div><div class="kpi-v b">${fmt(vE)}</div></div>
-    <div class="kpi"><div class="kpi-l">Notas Pendentes</div><div class="kpi-v ${nP>0?'r':'a'}">${nP}</div></div>
-    <div class="kpi"><div class="kpi-l">Previsão Rec.</div><div class="kpi-v a">${fmt(prevBase)}</div></div>`);
+    <div class="kpi"><div class="kpi-l">Shows com nota</div><div class="kpi-v b">${fmt(valorShowsEmitidos)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">${showsComNota.length} show(s) emitido(s)</div></div>
+    <div class="kpi"><div class="kpi-l">Shows sem nota</div><div class="kpi-v ${showsSemNota.length?'a':'g'}">${showsSemNota.length}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">controle de emissão</div></div>
+    <div class="kpi"><div class="kpi-l">Receita a entrar</div><div class="kpi-v a">${fmt(receitaAEntrarShows+recO)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">shows e receitas pendentes</div></div>
+    <div class="kpi"><div class="kpi-l">Despesas</div><div class="kpi-v r">${fmt(despT)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">lançamentos do mês</div></div>
+    <div class="kpi"><div class="kpi-l">Dívidas</div><div class="kpi-v ${divAberto?'r':'g'}">${fmt(divAberto)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">em aberto</div></div>
+    <div class="kpi"><div class="kpi-l">Previsão recebimento</div><div class="kpi-v a">${fmt(previsaoRecebimento)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">a receber</div></div>
+    <div class="kpi"><div class="kpi-l">Notas emitidas</div><div class="kpi-v b">${fmt(vE)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">${nE} emissão(ões)</div></div>`);
   // Avisos v21
   const inc=arr(DB.shows).filter(s=>s.falta?.length&&s.status!=='cancelado');
   const divMusicos = arr(DB.equipe).filter(m => calcSaldoMembro(m) > 0);
@@ -3582,12 +3658,16 @@ function rDash(){
   if(divMusicos.length) avHTML += `<div class="card warn" style="margin-bottom:11px;border-color:var(--rose)"><div style="font-size:13px;font-weight:700;color:var(--rose);margin-bottom:7px">⚠️ ${divMusicos.length} músico(s) com saldo credor</div>${divMusicos.map(m=>`<div style="font-size:12px;color:var(--t2);padding:3px 0"> <b style="color:var(--tx)">${m.nome}</b> deve receber ${fmt(calcSaldoMembro(m))}</div>`).join('')}</div>`;
   set('avisos', avHTML);
   // Resumo
-  set('d-resumo',`<div class="card"><div class="sl" style="margin-top:0"> Financeiro de ${M[mes]}</div>
-    <div class="rrow"><span>Receita Total</span><span style="color:var(--teal)">+${fmt(recT)}</span></div>
-    <div class="rrow"><span>Gasto no Mês</span><span style="color:var(--rose)">-${fmt(despT)}</span></div>
-    <div class="rrow"><span>Resultado</span><b style="color:${saldo>=0?'var(--teal)':'var(--rose)'}">${fmt(saldo)}</b></div>
+  set('d-resumo',`<div class="card"><div class="sl" style="margin-top:0">Saldo e controlo de ${M[mes]}</div>
+    <div class="rrow"><span>Shows com nota emitida</span><span style="color:var(--teal)">${fmt(valorShowsEmitidos)} <small>(${showsComNota.length})</small></span></div>
+    <div class="rrow"><span>Receita prevista a entrar</span><span style="color:var(--amber)">${fmt(receitaAEntrarShows+recO)}</span></div>
+    <div class="rrow"><span>Despesas do mês</span><span style="color:var(--rose)">-${fmt(despT)}</span></div>
+    <div class="rrow"><span>Dívidas em aberto</span><span style="color:${divAberto?'var(--rose)':'var(--teal)'}">${fmt(divAberto)}</span></div>
+    <div class="rrow"><span>Previsão de recebimento</span><span style="color:var(--amber)">${fmt(previsaoRecebimento)}</span></div>
+    <div class="rrow"><span>Notas emitidas</span><span style="color:var(--teal)">${fmt(vE)}</span></div>
+    <div class="rrow"><span>Saldo operacional</span><b style="color:${saldo>=0?'var(--teal)':'var(--rose)'}">${fmt(saldo)}</b></div>
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:11px;color:var(--t3)">
-      Previsão baseada no mês anterior: <b>${fmt(prevBase)}</b>
+      ${showsSemNota.length} show(s) ainda sem nota emitida · Previsão baseada no mês anterior: <b>${fmt(prevBase)}</b>
     </div>
   </div>`);
   // Agenda
@@ -3817,14 +3897,26 @@ async function delNfMensal(key){
    delete DB.nfMensal[key]; await save(); render();
 }
 
-function calcSaldoMembro(m){
-  const shows = arr(DB.shows).filter(s => s.status !== 'cancelado');
-  const devido = shows.reduce((acc, s) => {
-    const esc = escList(s).find(x => x.mbId === m.id);
-    return acc + (esc ? (esc.val || 0) : 0);
-  }, 0);
-  const pago = arr(DB.pags).filter(p => p.mbId === m.id).reduce((acc, p) => acc + (p.val || 0), 0);
-  return devido - pago;
+function calcDevidoMembro(m,mesRef=''){
+  return arr(DB.shows).filter(s=>s.status!=='cancelado'&&(!mesRef||String(s.data||'').startsWith(mesRef))).reduce((acc,s)=>{
+    const esc=escList(s).find(x=>x.mbId===m.id);
+    return acc+(esc?+(esc.val||0):0);
+  },0);
+}
+function calcPagoMembro(m,mesRef=''){
+  return arr(DB.pags).filter(p=>p.mbId===m.id&&(!mesRef||String(p.dt||'').startsWith(mesRef))).reduce((acc,p)=>acc+(+p.val||0),0);
+}
+function calcSaldoMembro(m,mesRef=''){
+  return calcDevidoMembro(m,mesRef)-calcPagoMembro(m,mesRef);
+}
+function detalhesShowsMembro(mbId){
+  const pagamentos=arr(DB.pags).filter(p=>p.mbId===mbId&&p.showRef);
+  return arr(DB.shows).filter(s=>s.status!=='cancelado'&&escList(s).some(x=>x.mbId===mbId)).map(s=>{
+    const esc=escList(s).find(x=>x.mbId===mbId);
+    const pago=pagamentos.filter(p=>p.showRef===s.id).reduce((a,p)=>a+(+p.val||0),0);
+    const previsto=+(esc?.val||0);
+    return {show:s,previsto,pago,pendente:previsto-pago};
+  }).sort((a,b)=>String(b.show.data).localeCompare(String(a.show.data)));
 }
 
 function getMesesSerie(serieId){
@@ -3950,7 +4042,22 @@ async function abrirNfShow(serieId, mesRef, showId){
   const e=$('lista-eq');if(!e)return;
   const eq=arr(DB.equipe);
   const tP=eq.reduce((a,m)=>a+(m.perc||0),0);
-  const info=tP>0?`<div class="notice ${tP>100?'err':'ok'}" style="margin-bottom:9px">${tP>100?'️ Total alocado '+tP.toFixed(1)+'% — passa de 100%':'Alocado: '+tP.toFixed(1)+'% · Saldo artista: '+(100-tP).toFixed(1)+'%'}</div>`:'';
+  const mesAtual=today().slice(0,7);
+  const totalPrev=eq.reduce((a,m)=>a+calcDevidoMembro(m),0);
+  const totalPago=eq.reduce((a,m)=>a+calcPagoMembro(m),0);
+  const totalPendente=totalPrev-totalPago;
+  const totalMes=eq.reduce((a,m)=>a+calcDevidoMembro(m,mesAtual),0);
+  const pagoMes=eq.reduce((a,m)=>a+calcPagoMembro(m,mesAtual),0);
+  const info=(tP>0?`<div class="notice ${tP>100?'err':'ok'}" style="margin-bottom:9px">${tP>100?'️ Total alocado '+tP.toFixed(1)+'% — passa de 100%':'Alocado: '+tP.toFixed(1)+'% · Saldo artista: '+(100-tP).toFixed(1)+'%'}</div>`:'')+
+    `<div class="card" style="margin-bottom:10px;padding:11px 12px">
+      <div class="sl" style="margin:0 0 8px">Resumo da equipe</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        <div style="background:var(--s3);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:var(--t3);text-transform:uppercase">Previsão total</div><b style="color:var(--gold2);font-size:13px">${fmt(totalPrev)}</b></div>
+        <div style="background:var(--s3);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:var(--t3);text-transform:uppercase">Já pago</div><b style="color:var(--teal);font-size:13px">${fmt(totalPago)}</b></div>
+        <div style="background:var(--s3);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:var(--t3);text-transform:uppercase">Pendente</div><b style="color:${totalPendente>0?'var(--rose)':'var(--teal)'};font-size:13px">${fmt(totalPendente)}</b></div>
+      </div>
+      <div style="font-size:11px;color:var(--t2);margin-top:8px">Período atual (${MS[+mesAtual.slice(5)-1]} ${mesAtual.slice(0,4)}): previsão <b>${fmt(totalMes)}</b> · pago <b>${fmt(pagoMes)}</b> · pendente <b>${fmt(totalMes-pagoMes)}</b></div>
+    </div>`;
   // Saldo devedor por membro (globalizado v21)
 
   // Pagamentos por membro e por show
@@ -3969,18 +4076,27 @@ async function abrirNfShow(serieId, mesRef, showId){
   e.innerHTML=info+(eq.length?eq.map(m=>{
     const ps=porShow(m.id);
     const totalMembro=ps.reduce((a,g)=>a+g.total,0);
-    const saldo = calcSaldoMembro(m);
+    const devido=calcDevidoMembro(m);
+    const pago=calcPagoMembro(m);
+    const saldo = devido-pago;
+    const devidoMes=calcDevidoMembro(m,mesAtual);
+    const pagoMesM=calcPagoMembro(m,mesAtual);
+    const detalhes=detalhesShowsMembro(m.id);
+    const detalhesHtml=detalhes.length?`<details style="margin-top:9px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px">Ver valores por show (${detalhes.length})</summary><div style="display:flex;flex-direction:column;gap:4px;margin-top:6px">${detalhes.map(d=>`<div style="display:grid;grid-template-columns:1fr auto;gap:6px;background:var(--s3);border-radius:7px;padding:7px 9px;font-size:11px"><div><div style="color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${fmtD(d.show.data)} · ${d.show.nome}</div><div style="color:var(--t3);margin-top:2px">Previsto ${fmt(d.previsto)} · Pago ${fmt(d.pago)}</div></div><b style="color:${d.previsto<=0?'var(--t3)':d.pendente>0?'var(--rose)':'var(--teal)'};align-self:center">${d.previsto<=0?'Sem valor':d.pendente>0?'Pendente '+fmt(d.pendente):'Pago'}</b></div>`).join('')}</div></details>`:'<div style="font-size:11px;color:var(--t3);margin-top:7px">Nenhum show escalado.</div>';
     return `<div class="item ig">
       <div class="ih">
         <div style="flex:1"><div class="iname">${m.nome} <span class="bdg v" style="font-size:9px">${m.fn}</span></div>
           <div class="imeta" style="line-height:1.9;margin-top:4px">
             ${m.val>0?`Por show: <b style="color:var(--tx)">${fmt(m.val)}</b>${m.perc>0?` <span style="color:var(--vio)">(${m.perc.toFixed(1)}%)</span>`:''}`:''} 
             ${m.pro>0?`<br>Pró-labore: <b style="color:var(--tx)">${fmt(m.pro)}</b>${m.proP>0?` <span style="color:var(--sky)">(${m.proP.toFixed(1)}%)</span>`:''}`:''}
-            <div style="margin-top:6px;padding:6px 10px;background:var(--s3);border-radius:8px;display:inline-block;border:1px solid ${saldo > 0 ? 'rgba(176,98,80,0.3)' : 'rgba(217,192,136,0.2)'}">
-              <span style="font-size:11px;color:var(--t3);text-transform:uppercase;font-weight:700">Saldo Devedor:</span>
-              <b style="font-size:14px;color:${saldo > 0 ? 'var(--rose)' : 'var(--teal)'};margin-left:5px">${fmt(saldo)}</b>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px">
+              <div style="background:var(--s3);border-radius:7px;padding:6px;text-align:center"><div style="font-size:8px;color:var(--t3);text-transform:uppercase">Previsão</div><b style="font-size:12px;color:var(--gold2)">${fmt(devido)}</b></div>
+              <div style="background:var(--s3);border-radius:7px;padding:6px;text-align:center"><div style="font-size:8px;color:var(--t3);text-transform:uppercase">Já pago</div><b style="font-size:12px;color:var(--teal)">${fmt(pago)}</b></div>
+              <div style="background:var(--s3);border-radius:7px;padding:6px;text-align:center"><div style="font-size:8px;color:var(--t3);text-transform:uppercase">Pendente</div><b style="font-size:12px;color:${saldo>0?'var(--rose)':'var(--teal)'}">${fmt(saldo)}</b></div>
             </div>
+            <div style="font-size:10px;color:var(--t3);margin-top:6px">Período atual: ${fmt(devidoMes)} previsto · ${fmt(pagoMesM)} pago · ${fmt(devidoMes-pagoMesM)} pendente</div>
             ${saldo > 0 ? `<div style="background:rgba(176,98,80,.08);padding:8px;border-radius:8px;font-size:11px;color:var(--rose);margin-top:9px;font-weight:700">⚠️ ${m.nome.split(' ')[0]} deve receber ${fmt(saldo)}.</div>` : ''}
+            ${detalhesHtml}
           </div>
           ${ps.length?`
           <div style="font-size:10px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px;margin:8px 0 5px">Recebido por show</div>
@@ -4074,6 +4190,79 @@ function delSelFin(){
   if(!confirm(`Excluir ${ids.length} lançamento(s)?`))return;
   ids.forEach(id=>{delete DB.fin[id];delete _selFin[id];});
   save();render();toast(`${ids.length} lançamento(s) excluído(s)`);
+}
+let _imgFinRows=[];
+function toggleImgNotaModo(){const nota=$('img-fin-tipo')?.value==='nota';if($('img-nota-modo-g'))$('img-nota-modo-g').style.display=nota?'block':'none';}
+function brValor(s){
+  const t=String(s||'').replace(/\s/g,'').replace(/R\$/gi,'').replace(/−/g,'-');
+  const m=t.match(/-?[0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2}|-?[0-9]+,[0-9]{2}|-?[0-9]+\.[0-9]{2}/);
+  if(!m)return 0; const x=m[0]; return x.includes(',')?parseFloat(x.replace(/\./g,'').replace(',','.')):parseFloat(x);
+}
+function ocrData(text){
+  const m=String(text||'').match(/(?:^|\D)([0-3]?\d)[\/.\-]([01]?\d)(?:[\/.\-](20\d{2}))?(?:\D|$)/);
+  return m?`${m[3]||new Date().getFullYear()}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`:today();
+}
+function ocrAmount(line){
+  const s=String(line||''), ms=s.match(/-?\s*(?:R\$\s*)?(?:\d{1,3}(?:\.\d{3})*|\d+)(?:,\d{2}|\.\d{2})/g)||[];
+  if(ms.length)return brValor(ms[ms.length-1]);
+  const raw=s.match(/-?\s*(?:R\$\s*)?\d{4,6}(?=\s|$)/g)||[];
+  if(raw.length){const n=raw[raw.length-1].replace(/\D/g,'');return +n/100;}
+  return 0;
+}
+function limpaOCR(s){return String(s||'').replace(/\s+/g,' ').replace(/[|]+/g,' ').trim();}
+function parseOCRRows(text,tipo,modo){
+  const lines=String(text||'').split(/\r?\n/).map(limpaOCR).filter(Boolean), rows=[], defaultDate=ocrData(text);
+  if(tipo==='nota'&&modo==='total'){
+    const totalLine=lines.find(l=>/(total|valor a pagar|valor final|líquido)/i.test(l)&&ocrAmount(l)>0)||lines.slice().reverse().find(l=>ocrAmount(l)>0);
+    const valor=ocrAmount(totalLine||'');
+    const fornecedor=(lines.find(l=>l.length>3&&!/(cnpj|cpf|nota fiscal|cupom|total|valor|chave|data)/i.test(l))||'Nota fiscal').slice(0,100);
+    if(valor) rows.push({data:defaultDate,valor,desc:`Nota fiscal — ${fornecedor}`,cat:'Outro',origem:'nota-total'});
+    return rows;
+  }
+  if(tipo==='nota'&&modo==='itens'){
+    lines.forEach((l,i)=>{const valor=ocrAmount(l);if(!valor||/(total|subtotal|troco|desconto|imposto|pagamento|cnpj|cpf|chave)/i.test(l))return;const desc=l.replace(/-?\s*(?:R\$\s*)?(?:\d{1,3}(?:\.\d{3})*|\d+)(?:,\d{2}|\.\d{2})\s*$/,'').trim();if(desc.length>2)rows.push({data:defaultDate,valor,desc:desc.slice(0,120),cat:'Outro',origem:'nota-item'});});
+    return rows;
+  }
+  lines.forEach(l=>{
+    const valor=ocrAmount(l); if(!valor||/(saldo|limite disponível|limite total|saldo anterior|saldo final)/i.test(l))return;
+    const negative=/-\s*(?:R\$\s*)?(?:\d|[0-9]{1,3}\.)/.test(l)||/\b(debito|débito|enviado|compra|pagamento|sa[ií]da)\b/i.test(l);
+    if(!negative)return;
+    const date=ocrData(l)||defaultDate;
+    let desc=l.replace(/-?\s*(?:R\$\s*)?(?:\d{1,3}(?:\.\d{3})*|\d+)(?:,\d{2}|\.\d{2})\s*(?:>|$)/,'').replace(/-?\s*(?:R\$\s*)?\d{4,6}\s*(?:>|$)/,'').replace(/\b\d{1,2}[\/.\-]\d{1,2}(?:[\/.\-]\d{2,4})?\b/g,'').replace(/documento\s*\d+/i,'').replace(/^.*?\bdes\s*:\s*/i,'').replace(/[>]+/g,'').trim();
+    if(!desc||desc.length<2)desc='Despesa identificada no extrato';
+    rows.push({data:date,valor:Math.abs(valor),desc:desc.slice(0,120),cat:'Outro',origem:'extrato'});
+  });
+  return rows;
+}
+function finImagemDuplicado(r){
+  const d=String(r.desc||'').toLowerCase().replace(/\W/g,'');
+  return arr(DB.fin).some(f=>String(f.data||'')===r.data&&Math.abs((+f.valor||0)-r.valor)<0.01&&String(f.desc||'').toLowerCase().replace(/\W/g,'').includes(d.slice(0,18)));
+}
+function renderImgFinPreview(){
+  const e=$('img-fin-prev');if(!e)return;
+  if(!_imgFinRows.length){e.innerHTML='';return;}
+  e.innerHTML=`<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px"><div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:7px">Prévia — revise antes de gravar</div>${_imgFinRows.map((r,i)=>`<div style="display:grid;grid-template-columns:1fr 105px;gap:6px;margin-bottom:6px;background:var(--s2);padding:7px;border-radius:8px"><input id="img-desc-${i}" value="${escH(r.desc)}" placeholder="Para que foi esta compra?"><input id="img-val-${i}" type="number" step="0.01" value="${r.valor.toFixed(2)}"><div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:6px"><input id="img-date-${i}" type="date" value="${r.data}"><select id="img-cat-${i}"><option>Outro</option><option>Gasolina</option><option>Manutenção do carro</option><option>Equipamentos</option><option>Alimentação</option><option>Saúde</option><option>Imposto Simples</option><option>Pagamento equipe</option><option>Cartão de crédito</option><option>Serasa / dívida</option></select></div></div>`).join('')}<div style="display:flex;gap:7px;margin-top:9px"><button class="btn pri" onclick="confirmarFinImagem()">Confirmar lançamentos</button><button class="btn ghost" onclick="_imgFinRows=[];renderImgFinPreview()">Descartar</button></div></div>`;
+  _imgFinRows.forEach((r,i)=>{const c=$(`img-cat-${i}`);if(c)c.value=r.cat||'Outro';});
+}
+async function lerFinImagem(input){
+  const file=input?.files?.[0];if(!file)return;
+  const status=$('img-fin-status'); status.textContent='A ler a imagem…'; _imgFinRows=[];renderImgFinPreview();
+  try{
+    if(!window.Tesseract)throw new Error('OCR indisponível — abra o app com internet para carregar o leitor.');
+    const out=await Tesseract.recognize(file,'por');
+    const tipo=$('img-fin-tipo')?.value||'extrato',modo=$('img-nota-modo')?.value||'total';
+    _imgFinRows=parseOCRRows(out.data?.text||'',tipo,modo).map(r=>({...r,duplicado:finImagemDuplicado(r)}));
+    status.textContent=_imgFinRows.length?`${_imgFinRows.length} lançamento(s) encontrado(s). Confira descrição, data e valor.`:'Não encontrei lançamentos com segurança. Tente uma imagem mais nítida ou use o lançamento manual.';
+    renderImgFinPreview();
+  }catch(e){status.textContent=e.message||'Não foi possível ler a imagem.';}
+}
+async function confirmarFinImagem(){
+  const rows=_imgFinRows.map((r,i)=>({...r,desc:$(`img-desc-${i}`)?.value.trim()||r.desc,valor:+$(`img-val-${i}`)?.value||0,data:$(`img-date-${i}`)?.value||today(),cat:$(`img-cat-${i}`)?.value||'Outro'})).filter(r=>r.valor>0&&r.desc);
+  if(!rows.length){toast('Nenhum lançamento válido para gravar','err');return;}
+  const novos=rows.filter(r=>!finImagemDuplicado(r));
+  const repetidos=rows.length-novos.length;
+  novos.forEach(r=>{const id='finimg_'+uid();DB.fin[id]={id,tipo:'desp',valor:+r.valor.toFixed(2),desc:r.desc,data:r.data,cat:r.cat,pgto:'',parc:null,rec:classRec(r.desc),origemImagem:r.origem||'imagem'};});
+  await save();_imgFinRows=[];renderImgFinPreview();if($('img-fin-status'))$('img-fin-status').textContent=`${novos.length} lançamento(s) gravado(s)${repetidos?`; ${repetidos} duplicado(s) ignorado(s)`:''}.`;render();toast(`${novos.length} lançamento(s) importado(s)`);
 }
 function rFin(){
   const e=$('lista-fin');if(!e)return;
