@@ -581,7 +581,8 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   </div><div id="pan-shows" style="display:none;margin:10px 0"></div>
   <div id="sa">
     <div class="card glass" style="padding:10px;margin-bottom:12px">
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="f-show-busca" oninput="rShows()" placeholder="Pesquisar show, local ou contratante" style="flex:2;min-width:180px;font-size:11px;padding:7px;background:var(--s2);border:1px solid var(--line);border-radius:8px;color:var(--tx)">
         <div style="font-size:12px;font-weight:700;color:var(--gold);flex-shrink:0">Histórico:</div>
         <input type="month" id="f-show-mes" onchange="rShows()" style="flex:1;font-size:11px;padding:5px;background:var(--s2);border:1px solid var(--line);border-radius:8px;color:var(--tx)">
         <select id="f-show-musico" onchange="rShows()" style="flex:1;font-size:11px;padding:5px;background:var(--s2);border:1px solid var(--line);border-radius:8px;color:var(--tx)">
@@ -1090,6 +1091,11 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
         <select id="es-prazo"><option value="30">30 dias</option><option value="60">60 dias</option><option value="90">90 dias</option></select>
       </div>
     </div>
+    <div id="es-recebimento-box" style="background:var(--s3);border:1px solid rgba(200,180,120,.22);border-radius:var(--rs);padding:11px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><label style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">Recebimento do contratante</label><button type="button" onclick="addParcelaShow('es')" style="font-size:11px;background:rgba(200,180,120,.12);color:var(--vio2);border:1px solid rgba(200,180,120,.28);border-radius:20px;padding:4px 9px;cursor:pointer;font-family:Inter;font-weight:700">+ Parcela</button></div>
+      <div id="es-rec-resumo" style="font-size:12px;color:var(--t2);margin-bottom:8px">Total recebido: R$ 0,00 · Saldo: R$ 0,00</div>
+      <div id="es-rec-lista" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">
       <div class="fg"><label>Tipo</label>
         <select id="es-tipo"><option>Casamento</option><option>Corporativo</option><option>Festa particular</option><option>Show público</option><option>Formatura</option><option>Show semanal fixo</option><option>Outro</option></select>
@@ -1133,6 +1139,15 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
     <button class="btn pri" onclick="salvarEditShow()" style="margin-top:6px">Salvar alterações</button>
     <div style="height:8px"></div>
     <button class="btn ghost" onclick="fecharModalShow()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL DETALHE DO SHOW -->
+<div id="modal-show-detalhe" style="display:none;position:fixed;inset:0;z-index:210;background:rgba(5,5,7,.88);backdrop-filter:blur(12px);align-items:flex-end;justify-content:center">
+  <div style="background:var(--s2);border:1px solid var(--line2);border-top-left-radius:20px;border-top-right-radius:20px;padding:22px 18px 36px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800">Detalhes do show</div><button onclick="fecharDetalheShow()" style="background:var(--s3);border:1px solid var(--line2);border-radius:50%;width:30px;height:30px;color:var(--t2);font-size:16px;cursor:pointer;font-family:Inter">×</button></div>
+    <div id="detalhe-show-conteudo"></div>
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn pri" style="flex:1" onclick="editarShowDetalhe()">Editar show</button><button class="btn ghost" style="flex:1" onclick="fecharDetalheShow()">Fechar</button></div>
   </div>
 </div>
 
@@ -1260,7 +1275,15 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 <datalist id="dl-sug-locais-show"></datalist><datalist id="dl-sug-locais-serie"></datalist><datalist id="dl-sug-locais-edit"></datalist><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script><script>
 'use strict';
 /* ═══════ CONSTANTES ═══════════════════════════════ */
-function ImpostoConfig(){DB.imposto=DB.imposto||{taxa:0.06};if(!DB.imposto.taxa)DB.imposto.taxa=0.06;return DB.imposto.taxa;}
+function ImpostoConfig(){DB.imposto=DB.imposto||{taxa:0.06};if(DB.imposto.taxa==null)DB.imposto.taxa=0.06;return +DB.imposto.taxa;}
+function showBruto(s){return +(s?.valor||0);}
+function showLiquido(s){const v=showBruto(s);return +(v*(1-ImpostoConfig())).toFixed(2);}
+function showImposto(s){const v=showBruto(s);return +(v*ImpostoConfig()).toFixed(2);}
+function showParcelas(s){return Array.isArray(s?.recebimentos)?s.recebimentos.filter(p=>+p.valor>0):[];}
+function showRecebido(s){const base=showLiquido(s),ps=showParcelas(s),sum=ps.reduce((a,p)=>a+(+p.valor||0),0);return Math.min(base,(sum||(!ps.length&&s?.status==='recebido'?base:0)));}
+function showSaldo(s){return Math.max(0,+(showLiquido(s)-showRecebido(s)).toFixed(2));}
+function showTemNota(s){return !!(s?.nfEmitida||s?.status==='nf'||s?.status==='recebido');}
+function showRecebStatus(s){const base=showLiquido(s),p=showRecebido(s);return p<=0?'Pendente':p>=base&&base>0?'Recebido':'Parcial';}
 const STORAGE_KEY='luah-producao-dados';
 const SENHA_KEY='luah-producao-senha';
 const M=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -3356,6 +3379,34 @@ function renderConteudo(){
 }
 
 /* ═══════ RENDER ═════════════════════════════════ */
+/* ─── RECEBIMENTO DO CONTRATANTE ───────────────── */
+let _recebTemp={es:[]};
+function recebValorBase(){const v=+$('es-valor')?.value||0;return +(v*(1-ImpostoConfig())).toFixed(2);}
+function syncParcelasShow(scope='es'){
+  const box=$(`${scope}-rec-lista`);if(!box)return;
+  _recebTemp[scope]=Array.from(box.querySelectorAll('[data-parcela]')).map(row=>({valor:+row.querySelector('.par-val')?.value||0,data:row.querySelector('.par-data')?.value||today(),status:row.querySelector('.par-status')?.value||'prevista',obs:row.querySelector('.par-obs')?.value?.trim()||''})).filter(p=>p.valor>0);
+  const total=_recebTemp[scope].filter(p=>p.status==='recebida').reduce((a,p)=>a+p.valor,0),base=recebValorBase();
+  const r=$(`${scope}-rec-resumo`);if(r)r.innerHTML=`Recebido: <b>${fmt(Math.min(total,base))}</b> · Saldo: <b>${fmt(Math.max(0,base-total))}</b> · Líquido após imposto: <b>${fmt(base)}</b>`;
+}
+function renderParcelasShow(scope='es'){
+  const box=$(`${scope}-rec-lista`);if(!box)return;
+  const arr=_recebTemp[scope]||[];
+  box.innerHTML=arr.map((p,i)=>`<div data-parcela style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--s2);border:1px solid var(--line);border-radius:8px;padding:7px">
+    <div class="fg"><label style="font-size:10px">Valor</label><input class="par-val" type="number" step="0.01" value="${p.valor||''}" oninput="syncParcelasShow('${scope}')"></div>
+    <div class="fg"><label style="font-size:10px">Data</label><input class="par-data" type="date" value="${p.data||today()}" oninput="syncParcelasShow('${scope}')"></div>
+    <div class="fg"><label style="font-size:10px">Estado</label><select class="par-status" onchange="syncParcelasShow('${scope}')"><option value="prevista" ${p.status==='prevista'?'selected':''}>Prevista</option><option value="recebida" ${p.status==='recebida'?'selected':''}>Recebida</option></select></div>
+    <div class="fg"><label style="font-size:10px">Observação</label><input class="par-obs" value="${escH(p.obs||'')}" placeholder="Pix, transferência..." oninput="syncParcelasShow('${scope}')"></div>
+    <button type="button" class="btn sm ghost" style="grid-column:1/-1;color:var(--rose)" onclick="_recebTemp['${scope}'].splice(${i},1);renderParcelasShow('${scope}')">Excluir parcela</button>
+  </div>`).join('');
+  syncParcelasShow(scope);
+}
+function addParcelaShow(scope='es'){
+  _recebTemp[scope]=_recebTemp[scope]||[];
+  const total=_recebTemp[scope].reduce((a,p)=>a+(+p.valor||0),0),base=recebValorBase();
+  _recebTemp[scope].push({valor:Math.max(0,+(base-total).toFixed(2)),data:today(),status:'prevista',obs:''});
+  renderParcelasShow(scope);
+}
+
 /* ─── EDIÇÃO DE SHOW ────────────────────────────── */
 function abrirEditShow(id){
   const sh=DB.shows[id];if(!sh)return;
@@ -3374,6 +3425,9 @@ function abrirEditShow(id){
   _escalaTemp['es']={};autoEscala('es');
   escList(sh).forEach(x=>{ if(x.mbId && DB.equipe[x.mbId]){ _escalaTemp.es[x.mbId]=true; _escalaValTemp.es[x.mbId]=+(x.val||0); _escalaManualTemp.es[x.mbId]=true; } });
   renderEscala('es');
+  _recebTemp.es=showParcelas(sh).map(p=>({...p}));
+  if(!_recebTemp.es.length&&sh.status==='recebido')_recebTemp.es=[{valor:showLiquido(sh),data:today(),status:'recebida',obs:'Recebimento anterior'}];
+  renderParcelasShow('es');
   const m=$('modal-show');m.style.display='flex';
   setTimeout(()=>m.addEventListener('click',function h(e){if(e.target===m){fecharModalShow();m.removeEventListener('click',h);}}),100);
 }
@@ -3389,7 +3443,9 @@ async function salvarEditShow(){
     return{mbId:mid,nome:m.nome,fn:m.fn,val:vShow,manual:!!_escalaManualTemp.es[mid]};
   });
   const recData = termo === 'vista' ? data : (termo === '50-50' ? data : (termo === 'permuta' ? data : addDays(data, prazo)));
-  Object.assign(DB.shows[id],{nome:$('es-nome').value.trim(),local:$('es-local').value.trim(),data,hora:$('es-hora').value||'20:00',valor,liq:+(valor*(1-ImpostoConfig())).toFixed(2),imp:+(valor*ImpostoConfig()).toFixed(2),prazo,termo,tipo:$('es-tipo').value,status:$('es-status').value,obs:$('es-obs').value.trim(),recData,falta:!valor?['valor']:[],escalacao});
+  syncParcelasShow('es');
+  const statusReceb=_recebTemp.es.some(p=>p.status==='recebida')&&showRecebido({...DB.shows[id],valor,recebimentos:_recebTemp.es})>=+(valor*(1-ImpostoConfig())).toFixed(2)?'recebido':$('es-status').value;
+  Object.assign(DB.shows[id],{nome:$('es-nome').value.trim(),local:$('es-local').value.trim(),data,hora:$('es-hora').value||'20:00',valor,liq:+(valor*(1-ImpostoConfig())).toFixed(2),imp:+(valor*ImpostoConfig()).toFixed(2),prazo,termo,tipo:$('es-tipo').value,status:statusReceb,nfEmitida:!!(DB.shows[id].nfEmitida||$('es-status').value==='nf'||statusReceb==='recebido'),recebimentos:_recebTemp.es,obs:$('es-obs').value.trim(),recData,falta:!valor?['valor']:[],escalacao});
   guardarLocal($('es-local').value);await save();fecharModalShow();
   toast('Show atualizado'+(escalacao.length?' · '+escalacao.length+' membro(s) escalado(s)':''));render();
 }
@@ -3579,6 +3635,7 @@ function rNotasEmit(){
 async function emitirNfDoShow(id){
   const x=DB.shows[id];if(!x)return;
   x.status='nf';
+  x.nfEmitida=true;
   x.recData=x.recData||addDays(x.data||today(),30);
   await save();
   toast('NF emitida para "'+x.nome+'". Recebimento em '+fmtD(x.recData));
@@ -3594,6 +3651,8 @@ async function marcarShowRecebido(id){
   const x=DB.shows[id];if(!x)return;
   if(!confirm('Marcar "'+x.nome+'" como recebido?'))return;
   x.status='recebido';
+  x.nfEmitida=!!x.nfEmitida||true;
+  x.recebimentos=[{valor:showLiquido(x),data:today(),status:'recebida',obs:'Recebimento total registrado'}];
   await save();
   toast('Show marcado como recebido: '+x.nome);
   render();
@@ -3674,7 +3733,7 @@ function rDash(){
   const ag=showsMes.sort((a,b)=>a.data.localeCompare(b.data));
   set('d-agenda',ag.length?ag.map(s=>{
     const dO=new Date(s.data+'T12:00');
-    return`<div class="ag" style="${s.data<today()?'opacity:.55':''}">
+    return`<div class="ag" onclick="abrirDetalheShow('${s.id}')" style="${s.data<today()?'opacity:.55':''};cursor:pointer">
       <div class="ag-d"><div class="ag-n" style="color:${s.serie?'var(--vio)':'var(--teal)'}">${dO.getDate()}</div><div class="ag-w">${D[dO.getDay()].slice(0,3)}</div></div>
       <div style="flex:1">
         <div class="iname">${s.nome}</div>
@@ -3687,7 +3746,7 @@ function rDash(){
   // Próximos
   const prox=arr(DB.shows).filter(s=>s.status!=='recebido'&&s.status!=='cancelado'&&s.data>=today()).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,4);
   set('d-prox',prox.length?prox.map(s=>`
-    <div class="item ${s.serie?'iv':'ib'}">
+    <div class="item ${s.serie?'iv':'ib'}" onclick="abrirDetalheShow('${s.id}')" style="cursor:pointer">
       <div class="ih"><div><div class="iname">${s.nome}</div><div class="imeta">${fmtD(s.data)} ${s.hora?'às '+s.hora:''} · ${s.tipo}</div>${escList(s).length?`<div style="font-size:10px;color:var(--gold);margin-top:3px;font-weight:600">Equipe: ${escList(s).map(x=>x.nome).join(' · ')}</div>`:''}</div>
       <span class="bdg ${s.serie?'v':'b'}">${s.serie?'Série':'Único'}</span></div>
       <div class="sg"><div>Bruto<b>${s.valor?fmt(s.valor):'—'}</b></div><div>Líquido<b style="color:var(--teal)">${s.liq?fmt(s.liq):'—'}</b></div><div>Recebimento<b>${fmtD(s.recData)}</b></div></div>
@@ -3731,13 +3790,30 @@ function rDash(){
   }).join('')||`<p class="empty">Nenhuma meta de equipamento.</p>`);
 }
 
+let _detalheShowId=null;
+function abrirDetalheShow(id){
+  const sh=DB.shows[id];if(!sh)return;_detalheShowId=id;
+  const bruto=showBruto(sh),imp=showImposto(sh),liq=showLiquido(sh),rec=showRecebido(sh),saldo=showSaldo(sh),ps=showParcelas(sh);
+  const status=showRecebStatus(sh),nota=showTemNota(sh);
+  const parcelHtml=ps.length?ps.map(p=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:11px"><span>${fmtD(p.data)} · ${p.status==='recebida'?'Recebida':'Prevista'}${p.obs?' · '+escH(p.obs):''}</span><b style="color:${p.status==='recebida'?'var(--teal)':'var(--amber)'}">${fmt(p.valor)}</b></div>`).join(''):'<div style="font-size:11px;color:var(--t3)">Nenhum recebimento registado.</div>';
+  const equipe=escList(sh).length?escList(sh).map(m=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px"><span>${escH(m.nome||m.mbId||'Músico')}</span><b style="color:var(--sky)">${fmt(m.val||0)}</b></div>`).join(''):'<div style="font-size:11px;color:var(--t3)">Nenhum músico escalado.</div>';
+  $('detalhe-show-conteudo').innerHTML=`<div style="margin-bottom:14px"><div style="font-size:19px;font-weight:800">${escH(sh.nome||'Show sem nome')}</div><div style="font-size:12px;color:var(--t2);margin-top:4px">${fmtD(sh.data)}${sh.hora?' · '+sh.hora:''}${sh.local?' · '+escH(sh.local):''}</div><div style="margin-top:8px"><span class="bdg ${nota?'b':'a'}">${nota?'Nota emitida':'Sem nota'}</span> <span class="bdg ${status==='Recebido'?'g':status==='Parcial'?'b':'a'}">${status}</span></div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px">${[['Bruto',bruto,'var(--gold)'],['Imposto',imp,'var(--rose)'],['Líquido',liq,'var(--teal)'],['Saldo a receber',saldo,saldo?'var(--amber)':'var(--teal)']].map(x=>`<div style="background:var(--s3);border:1px solid var(--line);border-radius:9px;padding:9px"><div style="font-size:10px;color:var(--t3)">${x[0]}</div><b style="display:block;margin-top:4px;color:${x[2]}">${fmt(x[1])}</b></div>`).join('')}</div>
+  <div class="card" style="padding:10px;margin-bottom:9px"><div class="sl" style="margin:0 0 5px">Recebimento do contratante</div><div style="font-size:11px;color:var(--t2);margin-bottom:5px">Termo: <b>${sh.termo==='vista'?'À vista':sh.termo==='permuta'?'Permuta':sh.termo==='50-50'?'50/50':(sh.prazo||30)+' dias'}</b> · Previsto: <b>${fmtD(sh.recData)}</b></div>${parcelHtml}</div>
+  <div class="card" style="padding:10px;margin-bottom:9px"><div class="sl" style="margin:0 0 5px">Músicos e valores previstos</div>${equipe}</div>
+  <div style="font-size:12px;color:var(--t2);line-height:1.5">${sh.obs?`<b>Observações:</b> ${escH(sh.obs)}`:'Sem observações.'}</div>`;
+  const m=$('modal-show-detalhe');m.style.display='flex';
+}
+function fecharDetalheShow(){$('modal-show-detalhe').style.display='none';_detalheShowId=null;}
+function editarShowDetalhe(){const id=_detalheShowId;fecharDetalheShow();if(id!=null)abrirEditShow(id);}
+
 function showItem(sh){
   const past=sh.data<today();
   const stColor={agendado:'var(--amber)',nf:'var(--sky)',recebido:'var(--teal)'}[sh.status]||'var(--t3)';
   const stLabel={agendado:'Agendado',nf:'NF emitida',recebido:'Recebido'}[sh.status]||sh.status;
   const custoEq=escList(sh).reduce((a,m)=>a+(m.val||0),0);
   const saldo=+(sh.liq||0)-custoEq;
-  return`<div style="background:var(--s2);border:1px solid var(--line);border-left:4px solid ${sh.serie?'var(--vio)':'var(--teal)'};border-radius:14px;padding:14px;margin-bottom:9px;${past?'opacity:.6':''}">
+  return`<div onclick="if(!event.target.closest('button'))abrirDetalheShow('${sh.id}')" style="background:var(--s2);border:1px solid var(--line);border-left:4px solid ${sh.serie?'var(--vio)':'var(--teal)'};border-radius:14px;padding:14px;margin-bottom:9px;cursor:pointer;${past?'opacity:.6':''}">
     <!-- Topo: data + status + nome -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
       <div style="width:44px;height:44px;border-radius:11px;background:${stColor}16;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ${stColor}33">
@@ -3782,6 +3858,7 @@ function rShows(){
   const hj=today();
   const fMes = $('f-show-mes')?.value;
   const fMb = $('f-show-musico')?.value;
+  const fBusca = ($('f-show-busca')?.value||'').trim().toLowerCase();
 
   // Atualizar select de músicos no filtro
   const sm = $('f-show-musico');
@@ -3800,6 +3877,7 @@ function rShows(){
   
   if(fMes) todos = todos.filter(s => s.data.startsWith(fMes));
   if(fMb) todos = todos.filter(s => (s.escalacao||[]).some(x => x.mbId === fMb));
+  if(fBusca) todos = todos.filter(s => [s.nome,s.local,s.tipo,s.obs,s.contratante,...escList(s).map(x=>x.nome)].filter(Boolean).join(' ').toLowerCase().includes(fBusca));
 
   const fut=todos.filter(x=>x.data>=hj);
   const pas=todos.filter(x=>x.data<hj).reverse();
