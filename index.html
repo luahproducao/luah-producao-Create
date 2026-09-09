@@ -1287,6 +1287,16 @@ function showRecebido(s){const base=showLiquido(s),ps=showParcelas(s),sum=ps.red
 function showSaldo(s){return Math.max(0,+(showLiquido(s)-showRecebido(s)).toFixed(2));}
 function showTemNota(s){return !!(s?.nfEmitida||s?.status==='nf'||s?.status==='recebido');}
 function showRecebStatus(s){const base=showLiquido(s),p=showRecebido(s);return p<=0?'Pendente':p>=base&&base>0?'Recebido':'Parcial';}
+// Caixa: considera apenas parcelas efetivamente recebidas na data indicada.
+function showRecebidoNoMes(s,ms){
+  const ps=showParcelas(s).filter(p=>p.status==='recebida'&&String(p.data||'').startsWith(ms));
+  if(ps.length) return ps.reduce((a,p)=>a+(+p.valor||0),0);
+  // Compatibilidade com shows antigos sem parcelas detalhadas.
+  if(!showParcelas(s).length&&s.status==='recebido'&&String(s.recData||s.data||'').startsWith(ms)) return showLiquido(s);
+  return 0;
+}
+function recebimentosShowsNoMes(ms){return arr(DB.shows).filter(s=>s.status!=='cancelado').reduce((a,s)=>a+showRecebidoNoMes(s,ms),0);}
+function saldoReceberShowsNoMes(ms){return arr(DB.shows).filter(s=>s.status!=='cancelado'&&String(s.recData||'').startsWith(ms)).reduce((a,s)=>a+showSaldo(s),0);}
 const STORAGE_KEY='luah-producao-dados';
 const SENHA_KEY='luah-producao-senha';
 const M=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -2801,12 +2811,31 @@ function salvarImpostos(){
   save();render();renderImpostos();
   toast(`Alíquota ${t.toFixed(1)}% aplicada a ${n} show(s)!`,'ok');
 }
+function renderPagamentosPorForma(){
+  const todos=arr(DB.fin).filter(f=>f.tipo!=='rec');
+  const labels={pix:'Pix',dinheiro:'Dinheiro',debito:'Débito',
+    'credito-vista':'Crédito à vista','credito-parcelado':'Crédito parcelado','':'Não informado'};
+  const cores={pix:'var(--teal)',dinheiro:'var(--gold)',debito:'var(--sky)','credito-vista':'var(--vio2)','credito-parcelado':'var(--vio2)','':'var(--t3)'};
+  const ordem=['pix','credito-vista','credito-parcelado','debito','dinheiro',''];
+  const grupos={}; ordem.forEach(k=>grupos[k]=[]);
+  todos.forEach(f=>{const k=Object.prototype.hasOwnProperty.call(grupos,f.pgto||'')?(f.pgto||''):'';grupos[k].push(f);});
+  const total=todos.reduce((a,f)=>a+(+f.valor||0),0);
+  const cards=ordem.filter(k=>grupos[k].length).map(k=>{
+    const lista=grupos[k],v=lista.reduce((a,f)=>a+(+f.valor||0),0);
+    return `<button type="button" onclick="window._carFormaFiltro='${k}';renderCartoes()" style="text-align:left;background:var(--s2);border:1px solid ${window._carFormaFiltro===k?'var(--gold)':'var(--line)'};border-left:3px solid ${cores[k]};border-radius:10px;padding:10px;cursor:pointer;color:var(--tx)"><div style="font-size:10px;color:${cores[k]};font-weight:800;text-transform:uppercase">${labels[k]}</div><div style="font-size:16px;font-weight:800;margin-top:3px">${fmt(v)}</div><div style="font-size:10px;color:var(--t3);margin-top:2px">${lista.length} lançamento(s)</div></button>`;
+  }).join('');
+  const filtro=window._carFormaFiltro||'Todos';
+  const itens=filtro==='Todos'?todos:grupos[filtro]||[];
+  const detalhe=itens.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,20).map(f=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:11px;color:var(--t2)"><span>${fmtD(f.data)} · ${escH(f.desc||'Lançamento')}<br><small style="color:var(--t3)">${labels[f.pgto||'']}</small></span><b style="color:var(--rose)">-${fmt(f.valor||0)}</b></div>`).join('');
+  return `<div class="card" style="border-color:rgba(200,180,120,.3);margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px"><div style="font-size:12px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:.5px">Pagamentos por forma</div><b style="font-size:12px;color:var(--rose)">${fmt(total)}</b></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:7px">${cards||'<div style="font-size:12px;color:var(--t3)">Nenhum lançamento de despesa.</div>'}</div>${itens.length?`<details style="margin-top:9px"><summary style="font-size:11px;color:var(--vio2);cursor:pointer">Ver lançamentos ${filtro==='Todos'?'recentes':'de '+(labels[filtro]||filtro)}</summary><div style="margin-top:6px">${detalhe}${itens.length>20?`<div style="font-size:10px;color:var(--t3);padding-top:5px">A mostrar os 20 mais recentes.</div>`:''}</div></details>`:''}</div>`;
+}
 function renderCartoes(){
   const e=$('cartoes');if(!e)return;
   const hj=today();
+  const pagResumo=renderPagamentosPorForma();
   const cartoes=arr(DB.fin).filter(f=>f.pgto==='credito-vista'||f.pgto==='credito-parcelado');
   if(!cartoes.length){
-    e.innerHTML=`<div class="empty" style="padding:26px 10px">Nenhum gasto em cartão de crédito.<br><span style="font-size:12px;color:var(--t3)">Lançamentos com crédito (à vista ou parcelado) aparecerão aqui consolidados.</span></div>`;return;
+    e.innerHTML=pagResumo+`<div class="empty" style="padding:26px 10px">Nenhuma compra em crédito.<br><span style="font-size:12px;color:var(--t3)">Pix, débito e dinheiro ficam organizados no quadro acima.</span></div>`;return;
   }
   // Meses com dados (últimos 6, incl. mês atual)
   const meses={};
@@ -2820,6 +2849,8 @@ function renderCartoes(){
   const ks=[...ksSet].sort();
   if(!ks.length){e.innerHTML=`<div class="empty" style="padding:26px 10px">Lançamentos de cartão sem data válida.</div>`;return;}
   window._carFiltro=window._carFiltro||'Todos';window._carBusca=window._carBusca||'';
+  // A seleção por forma controla o detalhe de pagamentos; o módulo abaixo continua dedicado a crédito/faturas.
+  const formaAtiva=window._carFormaFiltro||'Todos';
   const bancoDetetado=(f)=>detetarBanco(f);
   const normDesc=(f)=>(f.desc||'').toLowerCase().replace(/[—–\-]/g,' ').replace(/cartão|credito|crédito/gi,'').replace(/ +/g,' ').trim();
   const buscaAtiva=window._carBusca&&window._carBusca.trim().length>=2;
@@ -2869,7 +2900,7 @@ function renderCartoes(){
 const filtroSel=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px">${carOpts.map(n=>{const f=(DB.faturas||{})[n];const lab=f&&f.banco&&f.banco!==n?(f.banco+' — '+n):n;return `<button class="btn sm ghost" onclick="window._carFiltro='${n}';renderCartoes();" style="font-size:11px;padding:5px 11px;border-radius:var(--r-pill);border-color:${n===window._carFiltro?'var(--gold)':'rgba(200,180,120,.3)'};color:${n===window._carFiltro?'var(--gold)':'var(--t2)'};font-weight:700">${lab}</button>`;}).join('')}</div>`;
   const graficoBtn=`<button class="btn sm edit" onclick="toggleGrafCar()" style="margin-left:auto">${(window._carGrafOk?'Ocultar':'Exibir')+' gráfico'}</button>`;
   const faturasBtn=`<button class="btn sm edit" onclick="toggleFaturas()" style="margin-left:7px">Faturas</button>`;
-  e.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px">Gastos com cartões de crédito<span style="flex:1;height:1px;background:var(--line)"></span>${buscaSel}${filtroSel}${graficoBtn}${faturasBtn}</div>
+  e.innerHTML=pagResumo+`<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px">Compras no crédito e faturas<span style="flex:1;height:1px;background:var(--line)"></span>${buscaSel}${filtroSel}${graficoBtn}${faturasBtn}</div>
   <div id="pnl-faturas" style="display:none"></div>`+(window._carGrafOk?grafCar(cartoes):'')+kpi+cards;
 }
 
@@ -3136,6 +3167,7 @@ function renderRel(){
   const tBruto=showsP.reduce((a,b)=>a+(b.valor||0),0);
   const tImp=showsP.reduce((a,b)=>a+(b.imp||0),0);
   const tLiq=showsP.reduce((a,b)=>a+(b.liq||0),0);
+  const tCaixaShows=arr(DB.shows).filter(s=>s.status!=='cancelado').reduce((a,s)=>a+showRecebidoNoMes(s,iS.slice(0,7)),0);
   const tRec=finP.filter(f=>f.tipo==='rec').reduce((a,b)=>a+b.valor,0);
   const tDesp=finP.filter(f=>f.tipo==='desp').reduce((a,b)=>a+b.valor,0);
   const tCasa=finP.filter(f=>f.tipo==='casa').reduce((a,b)=>a+b.valor,0);
@@ -3145,7 +3177,7 @@ function renderRel(){
   const divAbertas=arr(DB.div).filter(d=>(+d.total||0)-(+d.pago||0)>0);
   const tDiv=divAbertas.reduce((a,b)=>a+(b.total-b.pago),0);
   const tDivQuit=arr(DB.div).reduce((a,b)=>a+(+b.pago||0),0);
-  const res=tLiq+tRec-tDesp-tCasa-tPag-tFaturaPag;
+  const res=tCaixaShows+tRec-tDesp-tCasa-tPag-tFaturaPag;
 
   // Shows agrupados por série e avulsos, com detalhe expansível por grupo.
   const gruposShows={};
@@ -3204,7 +3236,7 @@ function renderRel(){
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Pagamentos de faturas — quitados</span><b style="color:var(--rose)">-${fmt(tFaturaPag)}</b></div>
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Dívidas pendentes</span><b style="color:var(--amber)">${fmt(tDiv)}</b></div>
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Dívidas já quitadas</span><b style="color:var(--teal)">${fmt(tDivQuit)}</b></div>
-      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700"><span>Resultado de caixa</span><b style="color:${res>=0?'var(--teal)':'var(--rose)'}">${fmt(res)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700"><span>Resultado de caixa (recebimentos efetivos)</span><b style="color:${res>=0?'var(--teal)':'var(--rose)'}">${fmt(res)}</b></div>
     </div>
 
     ${pagDetalhe?`<div class="card"><div class="sl" style="margin-top:0"> Pagamentos por membro — ${label}</div>${pagDetalhe}</div>`:''}
@@ -3533,6 +3565,8 @@ function rPainel(){
   const brutoShows=showsMes.reduce((a,b)=>a+(b.valor||0),0);
   const liqShows=showsMes.reduce((a,b)=>a+(b.liq||0),0);
   const impShows=showsMes.reduce((a,b)=>a+(b.imp||0),0);
+  const recebimentosShowsMes=recebimentosShowsNoMes(ms);
+  const saldoShowsVencendoMes=saldoReceberShowsNoMes(ms);
   // Equipa: somar o valor designado por membro nos shows do mês
   const pagaEq=showsMes.reduce((a,b)=>a+(escList(b).reduce((x,m)=>x+(m.val||0),0)),0);
   // Receitas e despesas de lançamentos
@@ -3549,7 +3583,7 @@ function rPainel(){
   const equipePagaMes=arr(DB.pags).filter(p=>String(p.dt||'').startsWith(ms)).reduce((a,p)=>a+(+p.val||0),0);
   const equipePrevistaMes=pagaEq;
   const equipePendenteMes=Math.max(0,equipePrevistaMes-equipePagaMes);
-  const bruno=liqShows+recFins-recFinsImp-despDiretas-pagamentosFaturaMes-equipePrevistaMes;
+  const bruno=recebimentosShowsMes+recFins-recFinsImp-despDiretas-pagamentosFaturaMes-equipePrevistaMes;
   const caixa=bruno-divAberto;
   const notasPendentes = arr(DB.shows).filter(s => s.status === 'agendado' && s.data < today()).length;
   const totalNotasEmitidas = arr(DB.nfMensal).filter(n => n.status === 'emitida' && n.dtRecebimento.startsWith(ms)).reduce((acc, n) => acc + (n.liq || 0), 0);
@@ -3557,9 +3591,10 @@ function rPainel(){
   const cards=[
     {l:'Valor de Shows (Mês)',v:brutoShows,c:'var(--gold)',sub:`${showsMes.length} show(s) realizados`},
     {l:'Notas Emitidas',v:totalNotasEmitidas,c:'var(--teal)',sub:`Receitas via NF no mês`},
-    {l:'Previsão Recebimento',v:liqShows + recFins,c:'var(--amber)',sub:`Shows + Receitas pendentes`},
+    {l:'Recebimentos efetivos',v:recebimentosShowsMes+recFins,c:'var(--teal)',sub:`Inclui shows de meses anteriores`},
+    {l:'Previsão Recebimento',v:saldoShowsVencendoMes+recFins,c:'var(--amber)',sub:`A vencer no mês`},
     {l:'Notas Urgentes',v:notasPendentes,c:'var(--rose)',sub:`Shows passados sem NF lançada`, isCount: true},
-    {l:'Caixa da empresa',v:caixa,c:caixa>=0?'var(--teal)':'var(--rose)',sub:`Inclui equipe prevista: ${fmt(equipePrevistaMes)} · pendente ${fmt(equipePendenteMes)}`},
+    {l:'Caixa da empresa',v:caixa,c:caixa>=0?'var(--teal)':'var(--rose)',sub:`Recebido no mês − compromissos · equipe prevista ${fmt(equipePrevistaMes)}`},
   ];
   if($('d-mes')) $('d-mes').textContent=M[mes];
   if($('d-p-mes')) $('d-p-mes').textContent=M[mes];
