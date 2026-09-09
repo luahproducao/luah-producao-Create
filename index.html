@@ -888,6 +888,9 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
         </div>
         <div class="fg"><label>Data</label><input id="mdt" type="date"></div>
       </div>
+      <div class="fg" style="margin-top:9px"><label>Forma de pagamento dos itens</label>
+        <select id="m-pgto"><option value="">Usar a forma escrita em cada linha</option><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option><option value="debito">Cartão de débito</option><option value="credito-vista">Cartão de crédito à vista</option><option value="credito-parcelado">Cartão de crédito parcelado</option></select>
+      </div>
       <button class="btn pri" onclick="processarMsg()">Analisar e classificar</button>
     </div>
     <div id="msg-prev"></div>
@@ -1408,7 +1411,7 @@ function loadLocal(){
     const s = localStorage.getItem(STORAGE_KEY);
     if(s){
       const parsed = JSON.parse(s);
-      DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...parsed};
+      DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},faturaPagamentos:{},meta:{},nfMensal:{}, ...parsed};
     }
   }catch(e){
     console.warn('loadLocal erro:',e);
@@ -1552,7 +1555,7 @@ async function pullFromCloud(){
       // 404 = bin criado mas vazio — NUNCA substituir dados locais por estado vazio
       if(r.status === 404){
         if(temDados()){ syncUI(false,'protegido'); return 'protegido'; }
-        DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...DB}; cleanQueue(); LU.cloudVer = ver; persistLU(); garantirArtista(); saveLocal(); return 'vazio';
+        DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},faturaPagamentos:{},meta:{},nfMensal:{}, ...DB}; cleanQueue(); LU.cloudVer = ver; persistLU(); garantirArtista(); saveLocal(); return 'vazio';
       }
       return false;
     }
@@ -1564,7 +1567,7 @@ async function pullFromCloud(){
     if(nuvemVazia && temDados()){ syncUI(false,'protegido'); return 'protegido'; }
     // Mesclar sem apagar registos locais que ainda não chegaram à nuvem.
     const merged=mergeCloudKeepingLocalOnly(DB,d);
-    DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...merged.data};
+    DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},faturaPagamentos:{},meta:{},nfMensal:{}, ...merged.data};
     cleanQueue();
     LU.cloudVer = ver;
     persistLU();
@@ -1627,11 +1630,12 @@ async function carregarJB(){
       if(!r.ok) return;
       const j = await r.json(); const d = j.record;
       if(!d || typeof d !== 'object') return;
-      // PROTEÇÃO (v17): nunca substituir dados locais por banco vazio na nuvem
+      // Proteção: nunca substituir dados locais por nuvem vazia.
       if(!temDados(d) && temDados()){ syncUI(false,'protegido'); return; }
+      // O polling usa a mesma mesclagem segura do botão Atualizar.
       const merged=mergeCloudKeepingLocalOnly(DB,d);
-      DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...merged.data};
-      cleanQueue();
+      DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},faturaPagamentos:{},meta:{},nfMensal:{}, ...merged.data};
+      if(!(DB._queue&&DB._queue.length)) cleanQueue();
       LU.cloudVer = ver;
       persistLU();
       saveLocal();
@@ -1724,8 +1728,10 @@ async function conectarJSONBin(){
         if(!r2.ok) return;
         const j2 = await r2.json(); const d = j2.record;
         if(!d || typeof d !== 'object') return;
-        DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},meta:{},nfMensal:{}, ...d};
-        cleanQueue();
+        if(!temDados(d) && temDados()){ syncUI(false,'protegido'); return; }
+        const merged=mergeCloudKeepingLocalOnly(DB,d);
+        DB = {shows:{},series:{},fin:{},div:{},equip:{},equipe:{},pags:{},faturaPagamentos:{},meta:{},nfMensal:{}, ...merged.data};
+        if(!(DB._queue&&DB._queue.length)) cleanQueue();
         LU.cloudVer = ver;
         persistLU();
         saveLocal();
@@ -2693,6 +2699,41 @@ function mesFatura(f){
   let mm=d.getMonth(),yy=d.getFullYear();if(dd>ftc.fecha){mm++;if(mm>11){mm=0;yy++;}}
   return {ano:yy,mes:mm,vence:ftc.vence||10,noProxima:true};
 }
+function chaveFaturaCartao(f){
+  const mf=mesFatura(f);
+  const cart=(f.cartao||detetarBanco(f)||f.banco||'Outros').trim();
+  const mes=`${mf.ano}-${String((mf.mes||0)+1).padStart(2,'0')}`;
+  return {cart,mes,key:`${cart}::${mes}`};
+}
+function gruposFaturasCartao(){
+  const grupos={};
+  arr(DB.fin).filter(f=>f.pgto==='credito-vista'||f.pgto==='credito-parcelado').forEach(f=>{
+    const k=chaveFaturaCartao(f); if(!grupos[k.key])grupos[k.key]={key:k.key,cartao:k.cart,mes:k.mes,compras:[],total:0};
+    grupos[k.key].compras.push(f); grupos[k.key].total+=+(f.valor||0);
+  });
+  const pags=arr(DB.faturaPagamentos);
+  Object.values(grupos).forEach(g=>{
+    g.pago=pags.filter(p=>p.cartao===g.cartao&&p.mes===g.mes).reduce((a,p)=>a+(+p.valor||0),0);
+    const cfg=DB.faturas?.[g.cartao]||{}; const [gy,gm]=g.mes.split('-').map(Number); g.vencimento=`${g.mes}-${String(Math.min(28,+cfg.vence||10)).padStart(2,'0')}`;
+    g.saldo=Math.max(0,g.total-g.pago); g.estado=g.saldo<=0.009?'Paga':g.pago>0?'Parcial':'Aberta';
+  });
+  return Object.values(grupos).sort((a,b)=>b.mes.localeCompare(a.mes)||a.cartao.localeCompare(b.cartao));
+}
+function registrarPagamentoFatura(i){
+  const g=(window._faturaGrupos||[])[i]; if(!g)return;
+  const v=+$(`fatura-pag-valor-${i}`)?.value||0, dt=$(`fatura-pag-data-${i}`)?.value||today(), obs=$(`fatura-pag-obs-${i}`)?.value.trim()||'';
+  if(v<=0){toast('Informe o valor pago da fatura','err');return;}
+  const atual=g.pago||0;
+  if(v>g.saldo+0.01&&!confirm(`O pagamento excede o saldo em ${fmt(v-g.saldo)}. Registrar mesmo assim?`))return;
+  const id=uid(); DB.faturaPagamentos=DB.faturaPagamentos||{};
+  DB.faturaPagamentos[id]={id,cartao:g.cartao,mes:g.mes,valor:+v.toFixed(2),data:dt,obs,ref:'pagamento de fatura'};
+  save().then(()=>{toast(`Pagamento de fatura registrado: ${fmt(v)}`);render();});
+}
+function painelConsultaFaturas(){
+  const gs=gruposFaturasCartao(); window._faturaGrupos=gs;
+  if(!gs.length)return `<div style="font-size:11px;color:var(--t3);padding:8px 0">Nenhuma compra em cartão registrada.</div>`;
+  return `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:9px"><div style="font-size:11px;font-weight:700;color:var(--vio2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px">Consulta de faturas e pagamentos</div>${gs.map((g,i)=>`<div style="background:var(--s2);border:1px solid ${g.estado==='Paga'?'rgba(74,170,140,.35)':'var(--line)'};border-radius:9px;padding:9px;margin-bottom:7px"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:12px">${escH(g.cartao)} · ${escH(g.mes)}</b><span style="font-size:10px;font-weight:700;color:${g.estado==='Paga'?'var(--teal)':g.estado==='Parcial'?'var(--amber)':'var(--rose)'}">${g.estado}</span></div><div style="font-size:10px;color:var(--t3);margin-top:4px">${g.compras.length} compra(s) · Total ${fmt(g.total)} · Pago ${fmt(g.pago)} · Saldo ${fmt(g.saldo)}</div><details style="margin-top:6px"><summary style="font-size:10px;color:var(--vio2);cursor:pointer">Ver compras e registrar pagamento</summary><div style="margin-top:6px">${g.compras.slice(0,12).map(f=>`<div style="display:flex;justify-content:space-between;font-size:10px;border-bottom:1px solid var(--line);padding:3px 0"><span>${escH(f.desc)}</span><b>-${fmt(f.valor)}</b></div>`).join('')}${g.compras.length>12?`<div style="font-size:10px;color:var(--t3);padding-top:4px">… e mais ${g.compras.length-12} compra(s)</div>`:''}<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px"><input id="fatura-pag-valor-${i}" type="number" min="0" step="0.01" placeholder="Valor pago"><input id="fatura-pag-data-${i}" type="date" value="${today()}"></div><input id="fatura-pag-obs-${i}" style="width:100%;margin-top:5px" placeholder="Observação (opcional)"><button class="btn sm pri" style="margin-top:6px" onclick="registrarPagamentoFatura(${i})">Registrar pagamento</button></div></details></div>`).join('')}</div>`;
+}
 function toggleFaturas(){
   function listaCartoesHtml(){
     const fc=DB.faturas||{};
@@ -2704,7 +2745,7 @@ function toggleFaturas(){
   const p=$('pnl-faturas');if(!p)return;
   if(p.style.display==='block'){p.style.display='none';return;}
   const bancos=FINTX_BANCOS.map(b=>b.nome);
-  p.innerHTML=`<div class="card" style="margin-top:10px;border-color:rgba(200,180,120,.3)"><div style="font-size:12px;font-weight:700;margin-bottom:8px">Faturas por cartão</div>${listaCartoesHtml()}<div style="display:flex;gap:7px;margin-top:8px"><button class="btn pri" style="flex:1;font-size:12px" onclick="salvarFaturas()">Salvar</button><button class="btn ghost" style="font-size:12px" onclick="toggleFaturas()">Fechar</button></div></div>`;
+  p.innerHTML=`<div class="card" style="margin-top:10px;border-color:rgba(200,180,120,.3)"><div style="font-size:12px;font-weight:700;margin-bottom:8px">Faturas por cartão</div>${painelConsultaFaturas()}${listaCartoesHtml()}<div style="display:flex;gap:7px;margin-top:8px"><button class="btn pri" style="flex:1;font-size:12px" onclick="salvarFaturas()">Salvar</button><button class="btn ghost" style="font-size:12px" onclick="toggleFaturas()">Fechar</button></div></div>`;
   p.style.display='block';
 }
 async function salvarFaturas(){
@@ -2889,7 +2930,7 @@ function processarMsg(){
     
     // Inteligência v21: separar pagamento da descrição
     let bancoItem = detetarBanco({desc:nome});
-    let pgtoItem = pgto;
+    let pgtoItem = pgto || $('m-pgto')?.value || '';
     if(nome.toLowerCase().includes('pix')) { pgtoItem = 'pix'; nome = nome.replace(/pix/i,'').trim(); }
     if(nome.toLowerCase().includes('dinheiro')) { pgtoItem = 'dinheiro'; nome = nome.replace(/dinheiro/i,'').trim(); }
     
@@ -3012,11 +3053,14 @@ async function addDiv(){
 }
 async function abaterDiv(id){
   const v=parseFloat($('ab-'+id).value)||0;if(!v)return;
-  const d=DB.div[id];d.pago=Math.min(d.pago+v,d.total);
-  // registrar também no financeiro do mês corrente (fluxo de caixa)
+  const d=DB.div[id]; if(!d)return;
+  const pgto=$(('div-pgto-'+id))?.value||'pix';
+  const dt=$(('div-data-'+id))?.value||today();
+  d.pago=Math.min((+d.pago||0)+v,+d.total||v);
+  d.pagamentos=d.pagamentos||[]; d.pagamentos.push({id:uid(),valor:+v.toFixed(2),data:dt,pgto,obs:'Pagamento de dívida'});
   const idF=uid();
-  DB.fin[idF]={id:idF,tipo:d.cat==='casa'?'casa':'desp',valor:v,desc:'Pagamento dívida: '+d.nome,data:today(),cat:d.nome,rec:'variavel',pgto:'',parc:null,secao:d.cat};
-  await save();toast('Pagamento registrado');render();
+  DB.fin[idF]={id:idF,tipo:d.cat==='casa'?'casa':'desp',valor:+v.toFixed(2),desc:'Pagamento dívida: '+d.nome,data:dt,cat:d.nome,rec:'variavel',pgto,parc:null,secao:d.cat,pagamentoDivida:true,divId:id};
+  await save();toast('Pagamento registrado como quitado · '+(pgLabel[pgto]||pgto));render();
 }
 async function delDiv(id){if(!confirm('Remover?'))return;delete DB.div[id];await save();render();toast('Dívida removida');}
 
@@ -3096,15 +3140,20 @@ function renderRel(){
   const tDesp=finP.filter(f=>f.tipo==='desp').reduce((a,b)=>a+b.valor,0);
   const tCasa=finP.filter(f=>f.tipo==='casa').reduce((a,b)=>a+b.valor,0);
   const tPag=pagP.reduce((a,b)=>a+(b.val||0),0);
-  const tDiv=arr(DB.div).reduce((a,b)=>a+(b.total-b.pago),0);
-  const res=tLiq+tRec-tDesp-tCasa-tPag;
+  const faturaPagP=arr(DB.faturaPagamentos).filter(p=>p.data>=iS&&p.data<=fS);
+  const tFaturaPag=faturaPagP.reduce((a,b)=>a+(+b.valor||0),0);
+  const divAbertas=arr(DB.div).filter(d=>(+d.total||0)-(+d.pago||0)>0);
+  const tDiv=divAbertas.reduce((a,b)=>a+(b.total-b.pago),0);
+  const tDivQuit=arr(DB.div).reduce((a,b)=>a+(+b.pago||0),0);
+  const res=tLiq+tRec-tDesp-tCasa-tPag-tFaturaPag;
 
-  // Shows item a item
-  const showsDetalhe=showsP.map(s=>
-    `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px;color:var(--t2)">
-      <span>${fmtD(s.data)} · ${s.nome} <span class="bdg ${s.status==='recebido'?'g':s.status==='nf'?'b':'a'}" style="font-size:9px">${s.status==='recebido'?'Rec.':s.status==='nf'?'NF':'Ag.'}</span></span>
-      <b style="color:var(--teal)">${fmt(s.liq)}</b>
-    </div>`).join('');
+  // Shows agrupados por série e avulsos, com detalhe expansível por grupo.
+  const gruposShows={};
+  showsP.forEach(s=>{const k=s.serieId?`serie:${s.serieId}`:'avulsos';if(!gruposShows[k])gruposShows[k]={nome:s.serieId?(DB.series?.[s.serieId]?.nome||'Série'):'Shows avulsos',serie:!!s.serieId,shows:[]};gruposShows[k].shows.push(s);});
+  const showsDetalhe=Object.values(gruposShows).map(g=>{
+    const total=g.shows.reduce((a,x)=>a+(x.liq||0),0);
+    return `<details style="border-bottom:1px solid var(--line);padding:7px 0;font-size:12px;color:var(--t2)"><summary style="cursor:pointer;display:flex;justify-content:space-between"><span><b>${escH(g.nome)}</b> · ${g.shows.length} show(s)</span><b style="color:var(--teal)">${fmt(total)}</b></summary>${g.shows.sort((a,b)=>a.data.localeCompare(b.data)).map(x=>`<div style="display:flex;justify-content:space-between;padding:5px 0 2px 12px;font-size:11px"><span>${fmtD(x.data)} · ${escH(x.nome)} <span class="bdg ${x.status==='recebido'?'g':x.status==='nf'?'b':'a'}" style="font-size:9px">${x.status==='recebido'?'Rec.':x.status==='nf'?'NF':'Ag.'}</span></span><b style="color:var(--teal)">${fmt(x.liq)}</b></div>`).join('')}</details>`;
+  }).join('');
 
   // Pagamentos por membro
   const porMembro={};
@@ -3151,8 +3200,11 @@ function renderRel(){
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Outras receitas</span><b style="color:var(--teal)">+${fmt(tRec)}</b></div>
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Despesas empresa</span><b style="color:var(--rose)">-${fmt(tDesp)}</b></div>
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Despesas casa</span><b style="color:var(--rose)">-${fmt(tCasa)}</b></div>
-      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Pagamentos equipe</span><b style="color:var(--rose)">-${fmt(tPag)}</b></div>
-      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700"><span>Resultado</span><b style="color:${res>=0?'var(--teal)':'var(--rose)'}">${fmt(res)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Pagamentos equipe — quitados</span><b style="color:var(--rose)">-${fmt(tPag)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Pagamentos de faturas — quitados</span><b style="color:var(--rose)">-${fmt(tFaturaPag)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Dívidas pendentes</span><b style="color:var(--amber)">${fmt(tDiv)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)"><span>Dívidas já quitadas</span><b style="color:var(--teal)">${fmt(tDivQuit)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700"><span>Resultado de caixa</span><b style="color:${res>=0?'var(--teal)':'var(--rose)'}">${fmt(res)}</b></div>
     </div>
 
     ${pagDetalhe?`<div class="card"><div class="sl" style="margin-top:0"> Pagamentos por membro — ${label}</div>${pagDetalhe}</div>`:''}
@@ -3169,9 +3221,10 @@ function renderRel(){
     </div>`:''}
 
     <div class="card">
-      <div class="sl" style="margin-top:0"> Dívidas em aberto</div>
-      ${arr(DB.div).filter(d=>d.total-d.pago>0).map(d=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)">${d.nome} <span class="bdg ${{alta:'r',media:'a',baixa:'x'}[d.pri]}" style="font-size:9px">${d.pri}</span><b style="color:var(--rose)">${fmt(d.total-d.pago)}</b></div>`).join('')||'<div style="padding:7px 0;font-size:13px;color:var(--teal)">Nenhuma dívida em aberto</div>'}
-      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700">Total em aberto<b style="color:var(--rose)">${fmt(tDiv)}</b></div>
+      <div class="sl" style="margin-top:0"> Dívidas e pagamentos</div>
+      ${divAbertas.map(d=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2)">${escH(d.nome)} <span class="bdg ${{alta:'r',media:'a',baixa:'x'}[d.pri]}" style="font-size:9px">${d.pri}</span><b style="color:var(--rose)">${fmt(d.total-d.pago)} pendente</b></div>`).join('')||'<div style="padding:7px 0;font-size:13px;color:var(--teal)">Nenhuma dívida pendente</div>'}
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px"><span>Total pendente</span><b style="color:var(--rose)">${fmt(tDiv)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;font-size:13px"><span>Total já pago</span><b style="color:var(--teal)">${fmt(tDivQuit)}</b></div>
     </div>`);
 }
 function calcRel(){
@@ -3361,9 +3414,12 @@ function renderSaude(){
 async function pagarDivSaude(id){
   const v=parseFloat($('qs-'+id).value)||0;
   if(!v){toast('Informe o valor a pagar','err');return;}
-  if(!DB.div[id])return;
-  DB.div[id].pago=Math.min(DB.div[id].pago+v,DB.div[id].total);
-  await save();toast('Pagamento registrado!');render();
+  const d=DB.div[id]; if(!d)return;
+  const pgto=$(('div-pgto-'+id))?.value||'pix';
+  d.pago=Math.min((+d.pago||0)+v,+d.total||v);
+  d.pagamentos=d.pagamentos||[]; d.pagamentos.push({id:uid(),valor:+v.toFixed(2),data:today(),pgto,obs:'Pagamento de dívida'});
+  const idF=uid(); DB.fin[idF]={id:idF,tipo:d.cat==='casa'?'casa':'desp',valor:+v.toFixed(2),desc:'Pagamento dívida: '+d.nome,data:today(),cat:d.nome,rec:'variavel',pgto,pagamentoDivida:true,divId:id};
+  await save();toast('Pagamento quitado e lançado no caixa');render();
 }
 
 /* ═══════ CONTEÚDO DIGITAL ══════════════════════ */
@@ -3481,13 +3537,19 @@ function rPainel(){
   const pagaEq=showsMes.reduce((a,b)=>a+(escList(b).reduce((x,m)=>x+(m.val||0),0)),0);
   // Receitas e despesas de lançamentos
   const recFins=finsMes.filter(f=>f.tipo==='rec').reduce((a,b)=>a+(b.valor||0),0);
-  const despFins=finsMes.filter(f=>f.tipo!=='rec').reduce((a,b)=>a+(b.valor||0),0);
+  const comprasCartao=finsMes.filter(f=>f.tipo!=='rec'&&(f.pgto==='credito-vista'||f.pgto==='credito-parcelado'));
+  const pagamentosFaturaMes=arr(DB.faturaPagamentos).filter(p=>String(p.data||'').startsWith(ms)).reduce((a,p)=>a+(+p.valor||0),0);
+  const despDiretas=finsMes.filter(f=>f.tipo!=='rec'&&f.pgto!=='credito-vista'&&f.pgto!=='credito-parcelado').reduce((a,b)=>a+(b.valor||0),0);
+  const despFins=despDiretas+pagamentosFaturaMes;
   const recFinsImp=recFins*ImpostoConfig();
+  // liqShows já é líquido por show; não deduzir impShows novamente.
   const impTotal=impShows+recFinsImp;
-  // Dívidas: em aberto na aba Dívidas (empresa) + dívidas fixas em DB.fin deste mês? dívidas em DB.div já são geridas; parcelas entram em despFins.
   const divAberto=arr(DB.div).filter(d=>d.cat==='empresa').reduce((a,b)=>a+Math.max(0,(b.total||0)-(b.pago||0)),0);
   const divVencMes=arr(DB.div).filter(d=>d.cat==='empresa'&&d.venc&&d.venc.startsWith(ms)).reduce((a,b)=>a+Math.max(0,(b.total||0)-(b.pago||0)),0);
-  const bruno=liqShows+recFins-impTotal-pagaEq;
+  const equipePagaMes=arr(DB.pags).filter(p=>String(p.dt||'').startsWith(ms)).reduce((a,p)=>a+(+p.val||0),0);
+  const equipePrevistaMes=pagaEq;
+  const equipePendenteMes=Math.max(0,equipePrevistaMes-equipePagaMes);
+  const bruno=liqShows+recFins-recFinsImp-despDiretas-pagamentosFaturaMes-equipePrevistaMes;
   const caixa=bruno-divAberto;
   const notasPendentes = arr(DB.shows).filter(s => s.status === 'agendado' && s.data < today()).length;
   const totalNotasEmitidas = arr(DB.nfMensal).filter(n => n.status === 'emitida' && n.dtRecebimento.startsWith(ms)).reduce((acc, n) => acc + (n.liq || 0), 0);
@@ -3497,7 +3559,7 @@ function rPainel(){
     {l:'Notas Emitidas',v:totalNotasEmitidas,c:'var(--teal)',sub:`Receitas via NF no mês`},
     {l:'Previsão Recebimento',v:liqShows + recFins,c:'var(--amber)',sub:`Shows + Receitas pendentes`},
     {l:'Notas Urgentes',v:notasPendentes,c:'var(--rose)',sub:`Shows passados sem NF lançada`, isCount: true},
-    {l:'Caixa da empresa',v:caixa,c:caixa>=0?'var(--teal)':'var(--rose)',sub:'Bruno − dívidas em aberto'},
+    {l:'Caixa da empresa',v:caixa,c:caixa>=0?'var(--teal)':'var(--rose)',sub:`Inclui equipe prevista: ${fmt(equipePrevistaMes)} · pendente ${fmt(equipePendenteMes)}`},
   ];
   if($('d-mes')) $('d-mes').textContent=M[mes];
   if($('d-p-mes')) $('d-p-mes').textContent=M[mes];
@@ -3538,7 +3600,9 @@ function rPainelFin(){
   const ms=`${ano}-${String(mes+1).padStart(2,'0')}`;
   const fins=arr(DB.fin).filter(f=>f.data&&f.data.startsWith(ms));
   const rec=fins.filter(f=>f.tipo==='rec').reduce((a,b)=>a+(b.valor||0),0);
-  const desp=fins.filter(f=>f.tipo==='desp'||f.tipo==='casa').reduce((a,b)=>a+(b.valor||0),0);
+  const comprasCartao=fins.filter(f=>f.tipo!=='rec'&&(f.pgto==='credito-vista'||f.pgto==='credito-parcelado'));
+  const pagamentoFatura=arr(DB.faturaPagamentos).filter(p=>String(p.data||'').startsWith(ms)).reduce((a,p)=>a+(+p.valor||0),0);
+  const desp=fins.filter(f=>f.tipo==='desp'||f.tipo==='casa').filter(f=>f.pgto!=='credito-vista'&&f.pgto!=='credito-parcelado').reduce((a,b)=>a+(b.valor||0),0)+pagamentoFatura;
   const casa=fins.filter(f=>f.tipo==='casa').reduce((a,b)=>a+(b.valor||0),0);
   const saude=fins.filter(f=>f.cat==='Saúde').reduce((a,b)=>a+(b.valor||0),0);
   const cart=fins.filter(f=>f.pgto==='credito-vista'||f.pgto==='credito-parcelado').reduce((a,b)=>a+(b.valor||0),0);
@@ -3546,7 +3610,7 @@ function rPainelFin(){
   const cards=[
     {l:'Receitas do mês',v:rec,c:'var(--teal)',sub:`${fins.filter(f=>f.tipo==='rec').length} lançamento(s)`},
     {l:'Saúde e Bem-estar',v:saude,c:'var(--sky)',sub:`Investimento em saúde`},
-    {l:'Cartões de crédito',v:cart,c:'var(--amber)',sub:cart>0?`Via fatura`:'Sem uso este mês'},
+    {l:'Cartões de crédito',v:cart,c:'var(--amber)',sub:cart>0?`Compras agrupadas em faturas`:'Sem uso este mês'},
     {l:'Saldo do mês',v:saldo,c:saldo>=0?'var(--teal)':'var(--rose)',sub:saldo>=0?'Receitas − despesas':'Acima das receitas'},
   ];
   e.style.display='grid';e.style.gridTemplateColumns='repeat(auto-fit,minmax(150px,1fr))';e.style.gap='10px';
